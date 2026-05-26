@@ -9,12 +9,12 @@ const BW = (COLS + 2) * CELL; // 476
 const BH = (ROWS + 2) * CELL; // 340
 const BASE_SPEED = 50;
 
-// N자 경로: 하단좌 → 상단좌 → 하단우 → 상단우
+// n자(ㄷ자) 경로: 하단좌(스폰) → 상단좌 → 상단우 → 하단우(기지)
 const PATH_WP = [
   { x: CELL * 0.5,      y: BH - CELL * 0.5 }, // 하단좌 (스폰)
   { x: CELL * 0.5,      y: CELL * 0.5 },       // 상단좌
-  { x: BW - CELL * 0.5, y: BH - CELL * 0.5 }, // 하단우 (대각선)
-  { x: BW - CELL * 0.5, y: CELL * 0.5 },       // 상단우 (기지)
+  { x: BW - CELL * 0.5, y: CELL * 0.5 },       // 상단우
+  { x: BW - CELL * 0.5, y: BH - CELL * 0.5 }, // 하단우 (기지)
 ];
 const PATH_SEG = (() => {
   const segs = []; let cum = 0;
