@@ -501,14 +501,14 @@ function tickPlayer(p, dt, onKill) {
 // ═══════════════════════════════════════════════════════════════
 //  GAME BOARD
 // ═══════════════════════════════════════════════════════════════
-function GameBoard({ p, flipped, dragState, onDragStart, boardRef }) {
+function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, boardRef }) {
   const anti = flipped ? {transform:"scaleY(-1)"} : {};
 
   const onPD = (e, key) => {
     const d = p.dice[key];
     if (!d || d.dot === 7) return;
     e.preventDefault();
-    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
     onDragStart(p.id, key, e.clientX, e.clientY);
   };
 
@@ -516,10 +516,14 @@ function GameBoard({ p, flipped, dragState, onDragStart, boardRef }) {
   const srcDice = srcKey ? p.dice[srcKey] : null;
 
   return (
-    <div ref={boardRef} style={{position:"relative",width:BW,height:BH,background:"#FFFFFF",borderRadius:12,
-      boxShadow:"0 2px 16px rgba(0,0,0,0.11)",overflow:"hidden",
-      transform: flipped ? "scaleY(-1)" : "none",
-    }}>
+    <div ref={boardRef}
+      onPointerMove={e => onDragMove(e.clientX, e.clientY)}
+      onPointerUp={e => onDragEnd(p.id, e.clientX, e.clientY, flipped)}
+      style={{position:"relative",width:BW,height:BH,background:"#FFFFFF",borderRadius:12,
+        boxShadow:"0 2px 16px rgba(0,0,0,0.11)",overflow:"hidden",
+        transform: flipped ? "scaleY(-1)" : "none",
+        touchAction:"none",
+      }}>
       {/* N자 경로 시각화 */}
       <svg style={{position:"absolute",inset:0,pointerEvents:"none"}} width={BW} height={BH}>
         <polyline points={PATH_WP.map(pt=>`${pt.x},${pt.y}`).join(" ")}
@@ -885,51 +889,42 @@ export default function App() {
     dragRef.current = { pid, key, startX, startY, active: false };
   }, []);
 
-  useEffect(() => {
-    const onMove = (e) => {
-      const dr = dragRef.current; if (!dr) return;
-      if (!dr.active) {
-        if (Math.hypot(e.clientX - dr.startX, e.clientY - dr.startY) > 8) {
-          dr.active = true;
-          setDragVis({ pid: dr.pid, key: dr.key, x: e.clientX, y: e.clientY });
-        }
-        return;
+  const handleDragMove = useCallback((x, y) => {
+    const dr = dragRef.current; if (!dr) return;
+    if (!dr.active) {
+      if (Math.hypot(x - dr.startX, y - dr.startY) > 8) {
+        dr.active = true;
+        setDragVis({ pid: dr.pid, key: dr.key, x, y });
       }
-      setDragVis(v => v ? { ...v, x: e.clientX, y: e.clientY } : null);
-    };
+      return;
+    }
+    setDragVis(v => v ? { ...v, x, y } : { pid: dr.pid, key: dr.key, x, y });
+  }, []);
 
-    const onUp = (e) => {
-      const dr = dragRef.current; if (!dr) return;
-      const wasActive = dr.active;
-      dragRef.current = null;
-      setDragVis(null);
-      if (!wasActive) return;
+  const handleDragEnd = useCallback((pid, clientX, clientY, flipped) => {
+    const dr = dragRef.current;
+    if (!dr || dr.pid !== pid) return;
+    const wasActive = dr.active;
+    dragRef.current = null;
+    setDragVis(null);
+    if (!wasActive) return;
 
-      const boardEl = boardRefs.current[dr.pid];
-      if (!boardEl) return;
-      const rect = boardEl.getBoundingClientRect();
-      const bx = e.clientX - rect.left;
-      const flipped = dr.pid === 1;
-      const by = flipped ? (rect.bottom - e.clientY) : (e.clientY - rect.top);
+    const boardEl = boardRefs.current[pid];
+    if (!boardEl) return;
+    const rect = boardEl.getBoundingClientRect();
+    const bx = clientX - rect.left;
+    const by = flipped ? (rect.bottom - clientY) : (clientY - rect.top);
 
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const cx = (c + 1) * CELL + 3;
-          const cy = (r + 1) * CELL + 3;
-          if (bx >= cx && bx <= cx + CELL - 6 && by >= cy && by <= cy + CELL - 6) {
-            doMerge(dr.pid, dr.key, cellKey(c, r));
-            return;
-          }
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const cx = (c + 1) * CELL + 3;
+        const cy = (r + 1) * CELL + 3;
+        if (bx >= cx && bx <= cx + CELL - 6 && by >= cy && by <= cy + CELL - 6) {
+          doMerge(pid, dr.key, cellKey(c, r));
+          return;
         }
       }
-    };
-
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-    return () => {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-    };
+    }
   }, [doMerge]);
 
   const handleLevelUp = useCallback((pid, diceType) => {
@@ -971,6 +966,8 @@ export default function App() {
       <GameBoard p={p1} flipped
         dragState={dragVis}
         onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
+        onDragEnd={handleDragEnd}
         boardRef={el => boardRefs.current[1] = el}
       />
 
@@ -980,6 +977,8 @@ export default function App() {
       <GameBoard p={p0} flipped={false}
         dragState={dragVis}
         onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
+        onDragEnd={handleDragEnd}
         boardRef={el => boardRefs.current[0] = el}
       />
       <HUD p={p0} pid={0} accent="#3355EE" flipped={false}
