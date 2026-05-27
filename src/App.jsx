@@ -82,6 +82,14 @@ const DICE_DEFS = {
   growth:      { name:"성장",   border:"#7700CC", bg:"#BB66FF", target:"first", minClass:7,
     ability:{ type:"growth" },
     stats:{ dmg:{base:10,cP:5,lP:10}, atkInt:{base:2.0,cM:0,lM:0}, growthTime:{base:21,cM:1,lM:0} } },
+  // ── 희귀 등급 (추가) ──
+  light:       { name:"빛",     border:"#DDB800", bg:"#FFFFD0", target:"none", minClass:3,
+    ability:{ type:"lightAura" },
+    stats:{ atkInt:{base:9999} } },
+  // ── 전설 등급 (추가) ──
+  sun:         { name:"태양",   border:"#DD5500", bg:"#FFB833", target:"first", minClass:7,
+    ability:{ type:"sun", splashRadius:CELL*1.5 },
+    stats:{ dmg:{base:40,cP:5,lP:11}, atkInt:{base:1.2,cM:0,lM:0}, splashDmg:{base:40,cP:5,lP:11} } },
 };
 const DICE_KEYS = Object.keys(DICE_DEFS);
 const LV_COST = [100, 200, 400, 700];
@@ -390,7 +398,45 @@ function DiceGrowth({ size=60, dot=1 }) {
   );
 }
 
-const DICE_SVG = { fire:DiceFire, electric:DiceElectric, poison:DicePoison, ice:DiceIce, steel:DiceSteel, broken:DiceBroken, gamble:DiceGamble, lock:DiceLock, wind:DiceWind, gamblegrowth:DiceGambleGrowth, joker:DiceJoker, growth:DiceGrowth };
+function DiceLight({ size=60, dot=1 }) {
+  const S=size, b="#DDB800";
+  const cx=S*.5, cy=S*.5;
+  const rays=8;
+  const rayPaths=[];
+  for(let i=0;i<rays;i++){
+    const a=(i/rays)*Math.PI*2;
+    const r1=S*.22, r2=S*.42;
+    rayPaths.push(`M${(cx+r1*Math.cos(a)).toFixed(2)},${(cy+r1*Math.sin(a)).toFixed(2)} L${(cx+r2*Math.cos(a)).toFixed(2)},${(cy+r2*Math.sin(a)).toFixed(2)}`);
+  }
+  return (
+    <DiceCard size={S} border={b}>
+      {rayPaths.map((d,i)=><path key={i} d={d} stroke={b} strokeWidth={S*.048} strokeLinecap="round" opacity="0.6"/>)}
+      <circle cx={cx} cy={cy} r={S*.18} fill={b} opacity="0.72"/>
+      <DotLayer dot={dot} color={b} size={S}/>
+    </DiceCard>
+  );
+}
+
+function DiceSun({ size=60, dot=1 }) {
+  const S=size, b="#DD5500";
+  const cx=S*.5, cy=S*.5;
+  const pts=[];
+  for(let i=0;i<12;i++){
+    const a=(i/12)*Math.PI*2 - Math.PI/2;
+    const r=i%2===0?S*.42:S*.28;
+    pts.push(`${(cx+r*Math.cos(a)).toFixed(2)},${(cy+r*Math.sin(a)).toFixed(2)}`);
+  }
+  return (
+    <DiceCard size={S} border={b}>
+      <polygon points={pts.join(" ")} fill={b} opacity="0.38"/>
+      <circle cx={cx} cy={cy} r={S*.22} fill={b} opacity="0.6"/>
+      <circle cx={cx} cy={cy} r={S*.13} fill={b} opacity="0.82"/>
+      <DotLayer dot={dot} color={b} size={S}/>
+    </DiceCard>
+  );
+}
+
+const DICE_SVG = { fire:DiceFire, electric:DiceElectric, poison:DicePoison, ice:DiceIce, steel:DiceSteel, broken:DiceBroken, gamble:DiceGamble, lock:DiceLock, wind:DiceWind, gamblegrowth:DiceGambleGrowth, joker:DiceJoker, growth:DiceGrowth, light:DiceLight, sun:DiceSun };
 function DiceSVG({ type, dot=1, size=56 }) {
   const C = DICE_SVG[type]; return C ? <C size={size} dot={dot}/> : null;
 }
@@ -511,7 +557,24 @@ function applyHit(p, proj, tgt) {
   } else {
     if (Math.random() < 0.05) { dmg *= 2.0; spawnFx(p,"burst",tgt.x,tgt.y,"#FFD700"); }
   }
+  // 태양 체인 데미지 배율
+  if (ab.type === "sun") {
+    const sunDice = p.dice[proj.diceKey];
+    if (sunDice) {
+      if (sunDice.sunLastTarget === tgt.id) sunDice.sunHits = (sunDice.sunHits||0)+1;
+      else { sunDice.sunHits=1; sunDice.sunLastTarget=tgt.id; }
+      dmg *= Math.ceil(sunDice.sunHits/2);
+    }
+  }
   dealDmg(p, tgt, dmg);
+  // 태양 스플래시 (활성화 시: 3,5,7,9개)
+  if (ab.type === "sun" && (proj.sunCount||0) >= 3 && (proj.sunCount%2)===1) {
+    const sunDice = p.dice[proj.diceKey];
+    const sd = getStat(def.stats.splashDmg, proj.classLv, proj.level);
+    const splashR = ab.splashRadius * (1 + ((sunDice?.sunHits||1)-1)*0.15);
+    for (const e of p.enemies) if (e.id!==tgt.id&&e.hp>0&&Math.hypot(e.x-tgt.x,e.y-tgt.y)<=splashR) dealDmg(p,e,sd);
+    spawnFx(p,"burst",tgt.x,tgt.y,def.border);
+  }
   if (ab.type === "splash") {
     const sd = getStat(def.stats.splashDmg, proj.classLv, proj.level);
     for (const e of p.enemies) if (e.id!==tgt.id && e.hp>0 && Math.hypot(e.x-tgt.x,e.y-tgt.y)<=ab.radius) dealDmg(p,e,sd);
@@ -614,32 +677,46 @@ function tickPlayer(p, dt, onKill) {
   }
   p.enemies = p.enemies.filter(e => !toRemove.has(e.id));
 
+  // 빛 아우라 버프 맵 계산 (십자 인접 셀)
+  const lightBuffMap = {};
+  for (const [lk, ld] of Object.entries(p.dice)) {
+    if (!ld || ld.type !== "light") continue;
+    const llv = p.diceLevels["light"] || 1;
+    const lclv = (p.classLevels?.["light"]) || (DICE_DEFS.light.minClass||3);
+    const lbPct = ld.dot * (6 + (lclv-1)*0.3) + (llv-1)*1;
+    const [lc, lr] = lk.split(",").map(Number);
+    for (const [nc, nr] of [[lc-1,lr],[lc+1,lr],[lc,lr-1],[lc,lr+1]]) {
+      if (nc<0||nc>=COLS||nr<0||nr>=ROWS) continue;
+      const nk = cellKey(nc, nr);
+      lightBuffMap[nk] = Math.max(lightBuffMap[nk]||0, lbPct);
+    }
+  }
+  // 태양 활성화 계산 (3,5,7,9개일 때)
+  const sunCount = Object.values(p.dice).filter(d=>d?.type==="sun").length;
+  const sunActivated = sunCount >= 3 && sunCount % 2 === 1;
+
   const newProjs = [];
   const dotSize = CELL - 12;
   for (const [key, d] of Object.entries(p.dice)) {
     if (!d) continue;
     d.cd -= dt; if (d.cd > 0) continue;
     const def = DICE_DEFS[d.type];
+    // 빛 주사위: 공격 없음, CD만 리셋
+    if (def.ability.type === "lightAura") { d.cd = 1.0; continue; }
     const {x:cx, y:cy} = cellXY(...key.split(",").map(Number));
     const live = p.enemies.filter(e=>e.hp>0); if (!live.length) continue;
 
     const lv = p.diceLevels[d.type] || 1;
     const clv = (p.classLevels && p.classLevels[d.type]) || 1;
     d.subIdx = (d.subIdx||0) % d.dot;
-    const atkInt = getStat(def.stats.atkInt, clv, lv);
+    let atkInt = getStat(def.stats.atkInt, clv, lv);
+    if (d.type === "sun" && sunActivated) atkInt = 0.4;
     const selfBuff = getSelfSpeedBuff(d, clv, lv);
-    d.cd = atkInt * (1 - selfBuff) / d.dot;
+    const lightBuff = Math.min((lightBuffMap[key]||0) / 100, 0.95);
+    const totalBuff = Math.min(selfBuff + lightBuff, 0.95);
 
     const dotPositions = DOT_LAYOUTS[d.dot];
     if (!dotPositions) continue;
-    let gunX, gunY;
-    if (dotPositions === "star") {
-      gunX = cx; gunY = cy;  // 7성: 중앙(5번 위치)에서 발사
-    } else {
-      const [px, py] = dotPositions[d.subIdx];
-      gunX = cx + (px/100 - 0.5) * dotSize;
-      gunY = cy + (py/100 - 0.5) * dotSize;
-    }
 
     const dmg = getStat(def.stats.dmg, clv, lv);
     let tgt;
@@ -655,8 +732,22 @@ function tickPlayer(p, dt, onKill) {
       tgt = live.reduce((a,b) => a.dist < b.dist ? a : b);
     }
     const projColor = def.border === "#RAINBOW" ? `hsl(${(Date.now()/10)%360},100%,50%)` : def.border;
-    newProjs.push({id:uid(),x:gunX,y:gunY,targetId:tgt.id,dmg,diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:1560,angleSpread:0,tx:tgt.x,ty:tgt.y});
-    d.subIdx = (d.subIdx + 1) % d.dot;
+    const projBase = {diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:1560,tx:tgt.x,ty:tgt.y,diceKey:key,sunCount};
+
+    if (dotPositions === "star") {
+      // 7성: 동시에 7발 부채꼴 발사, CD = 전체 atkInt
+      d.cd = atkInt * (1 - totalBuff);
+      for (let si=0; si<7; si++) {
+        newProjs.push({...projBase, id:uid(), x:cx, y:cy, targetId:tgt.id, dmg, angleSpread:(si-3)*0.07});
+      }
+    } else {
+      d.cd = atkInt * (1 - totalBuff) / d.dot;
+      const [px, py] = dotPositions[d.subIdx];
+      const gunX = cx + (px/100 - 0.5) * dotSize;
+      const gunY = cy + (py/100 - 0.5) * dotSize;
+      newProjs.push({...projBase, id:uid(), x:gunX, y:gunY, targetId:tgt.id, dmg, angleSpread:0});
+      d.subIdx = (d.subIdx + 1) % d.dot;
+    }
   }
 
   const hitIds = new Set();
