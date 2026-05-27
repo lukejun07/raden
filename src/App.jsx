@@ -428,15 +428,16 @@ function spawnEnemy(monType, gameTime, wave) {
   };
 }
 
-function makePlayer(id, deck) {
+function makePlayer(id, deck, classLevels = {}) {
   return {
     id, deck, sp: 100, summonCost: 10, hearts: 3,
     dice: {}, enemies: [], projs: [], effects: [],
     wave: 1,
     dead: false,
-    gameTime: 0, nextBossTime: 60,
-    normalTimer: 5, bigTimer: 10, normalKillCount: 0,
-    diceLevels: {},  // 종류별 전역 레벨: { fire:1, electric:2, ... }
+    gameTime: 0, nextBossTime: 80,
+    normalTimer: 10, bigTimer: 20, normalKillCount: 0,
+    diceLevels: {},   // 인게임 파워업 레벨 { type: 1~5 }
+    classLevels,      // 덱 빌더에서 설정한 클래스 레벨 { type: number }
   };
 }
 
@@ -520,23 +521,23 @@ function applyHit(p, proj, tgt) {
 function tickPlayer(p, dt, onKill) {
   p.gameTime += dt;
 
-  // 60초마다 보스 스폰
+  // 80초마다 보스 스폰
   if (p.gameTime >= p.nextBossTime && !p.enemies.some(e => e.isBoss)) {
     p.enemies.push(spawnEnemy("boss", p.gameTime, p.wave));
-    p.nextBossTime += 60;
+    p.nextBossTime += 80;
   }
 
-  p.wave = Math.floor(p.gameTime / 60) + 1;
+  p.wave = Math.floor(p.gameTime / 80) + 1;
 
   p.normalTimer -= dt;
   if (p.normalTimer <= 0) {
     p.enemies.push(spawnEnemy("normal", p.gameTime, p.wave));
-    p.normalTimer = 5;
+    p.normalTimer = 10;
   }
   p.bigTimer -= dt;
   if (p.bigTimer <= 0) {
     p.enemies.push(spawnEnemy("big", p.gameTime, p.wave));
-    p.bigTimer = 10;
+    p.bigTimer = 20;
   }
 
   const toRemove = new Set();
@@ -593,12 +594,19 @@ function tickPlayer(p, dt, onKill) {
     d.cd = atkInt * (1 - selfBuff) / d.dot;
 
     const dotPositions = DOT_LAYOUTS[d.dot];
-    if (!dotPositions || dotPositions === "star") continue;
-    const [px, py] = dotPositions[d.subIdx];
-    const gunX = cx + (px/100 - 0.5) * dotSize;
-    const gunY = cy + (py/100 - 0.5) * dotSize;
+    if (!dotPositions) continue;
+    let gunX, gunY;
+    if (dotPositions === "star") {
+      gunX = cx; gunY = cy;  // 7성: 중앙(5번 위치)에서 발사
+    } else {
+      const [px, py] = dotPositions[d.subIdx];
+      gunX = cx + (px/100 - 0.5) * dotSize;
+      gunY = cy + (py/100 - 0.5) * dotSize;
+    }
 
-    const dmg = getStat(def.stats.dmg, d.dot, lv);
+    const clv = (p.classLevels && p.classLevels[d.type]) || 1;
+    const classMult = 1 + (clv - 1) * 0.07;  // 클래스당 7% 데미지 보너스
+    const dmg = getStat(def.stats.dmg, d.dot, lv) * classMult;
     let tgt;
     if (def.target === "random") {
       tgt = live[Math.floor(Math.random() * live.length)];
@@ -885,13 +893,31 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
 // ═══════════════════════════════════════════════════════════════
 //  DECK BUILDER
 // ═══════════════════════════════════════════════════════════════
-function DeckPanel({ label, deck, setDeck, accent }) {
+const CLASS_MAX = 15;
+function ClassStepper({ value, onChange, color }) {
+  const v = value || 1;
+  const btnStyle = (disabled) => ({
+    width:20, height:20, border:`1px solid ${disabled?"#ddd":color}`, borderRadius:4,
+    background: disabled?"#f5f5f5":"#fff", color: disabled?"#bbb":color,
+    fontSize:13, fontWeight:900, cursor: disabled?"default":"pointer",
+    display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1, padding:0,
+  });
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:3}} onClick={e=>e.stopPropagation()}>
+      <button style={btnStyle(v<=1)} onClick={()=>onChange(Math.max(1,v-1))}>−</button>
+      <span style={{fontSize:11,fontWeight:800,color,minWidth:28,textAlign:"center"}}>C{v}</span>
+      <button style={btnStyle(v>=CLASS_MAX)} onClick={()=>onChange(Math.min(CLASS_MAX,v+1))}>+</button>
+    </div>
+  );
+}
+
+function DeckPanel({ label, deck, setDeck, accent, classLevels, setClass }) {
   const toggle = k => {
     if (deck.includes(k)) { if (deck.length > 1) setDeck(deck.filter(x=>x!==k)); }
     else if (deck.length < 5) setDeck([...deck,k]);
   };
   return (
-    <div style={{background:"#fff",border:`1.5px solid ${accent}44`,borderRadius:14,padding:16,minWidth:240,boxShadow:`0 4px 20px ${accent}18`}}>
+    <div style={{background:"#fff",border:`1.5px solid ${accent}44`,borderRadius:14,padding:16,minWidth:260,boxShadow:`0 4px 20px ${accent}18`}}>
       <div style={{fontWeight:800,color:accent,marginBottom:10,fontSize:14}}>{label} ({deck.length}/5)</div>
       {DICE_KEYS.map(k=>{
         const d=DICE_DEFS[k]; const sel=deck.includes(k);
@@ -902,7 +928,10 @@ function DeckPanel({ label, deck, setDeck, accent }) {
               <div style={{fontSize:12,fontWeight:sel?800:500,color:sel?d.border:"#334"}}>{d.name}</div>
               <div style={{fontSize:10,color:"#999"}}>{d.ability.type}</div>
             </div>
-            {sel && <span style={{color:d.border,fontSize:15}}>✓</span>}
+            {sel
+              ? <ClassStepper value={classLevels[k]||1} onChange={v=>setClass(k,v)} color={d.border}/>
+              : <span style={{fontSize:10,color:"#ccc"}}>C1</span>
+            }
           </div>
         );
       })}
@@ -910,16 +939,18 @@ function DeckPanel({ label, deck, setDeck, accent }) {
   );
 }
 
-function DeckBuilder({ p1Deck,p2Deck,setP1Deck,setP2Deck,onStart }) {
+function DeckBuilder({ p1Deck,p2Deck,setP1Deck,setP2Deck,p1Class,setP1Class,p2Class,setP2Class,onStart }) {
+  const setP1ClassFor = (type, v) => setP1Class(prev=>({...prev,[type]:v}));
+  const setP2ClassFor = (type, v) => setP2Class(prev=>({...prev,[type]:v}));
   return (
     <div style={{minHeight:"100vh",background:"linear-gradient(160deg,#EEF2FF,#F5F0FF)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:28,fontFamily:"'Segoe UI',system-ui,sans-serif",color:"#223",padding:24}}>
       <div style={{textAlign:"center"}}>
         <div style={{fontSize:32,fontWeight:900,letterSpacing:3}}>🎲 RANDOM DICE</div>
-        <div style={{fontSize:12,color:"#99a",letterSpacing:2,marginTop:6}}>덱 5개 선택</div>
+        <div style={{fontSize:12,color:"#99a",letterSpacing:2,marginTop:6}}>덱 5개 선택 · C = 클래스 레벨</div>
       </div>
       <div style={{display:"flex",gap:24,flexWrap:"wrap",justifyContent:"center"}}>
-        <DeckPanel label="🔵 P1 덱" deck={p1Deck} setDeck={setP1Deck} accent="#3355EE"/>
-        <DeckPanel label="🔴 P2 덱" deck={p2Deck} setDeck={setP2Deck} accent="#EE3355"/>
+        <DeckPanel label="🔵 P1 덱" deck={p1Deck} setDeck={setP1Deck} accent="#3355EE" classLevels={p1Class} setClass={setP1ClassFor}/>
+        <DeckPanel label="🔴 P2 덱" deck={p2Deck} setDeck={setP2Deck} accent="#EE3355" classLevels={p2Class} setClass={setP2ClassFor}/>
       </div>
       <button onClick={onStart} style={{padding:"14px 56px",background:"linear-gradient(135deg,#3355EE,#1133BB)",border:"none",borderRadius:14,color:"#fff",fontSize:18,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 24px #3355EE55",letterSpacing:2}}>⚔️ 대전 시작</button>
     </div>
@@ -958,6 +989,8 @@ export default function App() {
   const [winner, setWinner] = useState(null);
   const [p1Deck, setP1Deck] = useState(["fire","electric","ice","wind","steel"]);
   const [p2Deck, setP2Deck] = useState(["poison","broken","gamble","lock","ice"]);
+  const [p1Class, setP1Class] = useState({});
+  const [p2Class, setP2Class] = useState({});
 
   const gsRef = useRef(null);
   const rafRef = useRef(null);
@@ -1002,9 +1035,9 @@ export default function App() {
   }, [phase, loop]);
 
   const startGame = useCallback(() => {
-    gsRef.current = { players: [makePlayer(0,p1Deck), makePlayer(1,p2Deck)] };
+    gsRef.current = { players: [makePlayer(0,p1Deck,p1Class), makePlayer(1,p2Deck,p2Class)] };
     setPhase("game");
-  }, [p1Deck, p2Deck]);
+  }, [p1Deck, p2Deck, p1Class, p2Class]);
 
   const summon = useCallback(pid => {
     const p = gsRef.current?.players[pid]; if (!p || p.sp < p.summonCost) return;
@@ -1025,16 +1058,14 @@ export default function App() {
 
     const srcJoker = src.type === "joker", tgtJoker = tgt.type === "joker";
     if (srcJoker && !tgtJoker) {
-      // 조커가 대상 종류로 변신, 대상 제거
+      // 조커(src)가 대상 종류로 복사 변신, 대상은 그대로
       const lv = p.diceLevels[tgt.type] || 1;
       p.dice[srcKey] = makeDice(tgt.type, src.dot, lv);
-      delete p.dice[targetKey];
       rerender();
     } else if (!srcJoker && tgtJoker) {
-      // 조커(tgt)가 src 종류로 변신, src 제거
+      // 조커(tgt)가 src 종류로 복사 변신, src는 그대로
       const lv = p.diceLevels[src.type] || 1;
       p.dice[targetKey] = makeDice(src.type, tgt.dot, lv);
-      delete p.dice[srcKey];
       rerender();
     } else if (src.type === tgt.type && src.dot < 7) {
       // 일반 합성
@@ -1101,7 +1132,7 @@ export default function App() {
     rerender();
   }, [rerender]);
 
-  if (phase==="deck") return <DeckBuilder p1Deck={p1Deck} p2Deck={p2Deck} setP1Deck={setP1Deck} setP2Deck={setP2Deck} onStart={startGame}/>;
+  if (phase==="deck") return <DeckBuilder p1Deck={p1Deck} p2Deck={p2Deck} setP1Deck={setP1Deck} setP2Deck={setP2Deck} p1Class={p1Class} setP1Class={setP1Class} p2Class={p2Class} setP2Class={setP2Class} onStart={startGame}/>;
   if (phase==="over") return <GameOver winner={winner} gs={gsRef.current} onRestart={()=>{setPhase("deck");setWinner(null);setDragVis(null);dragRef.current=null;}}/>;
 
   const gs = gsRef.current; if (!gs) return null;
