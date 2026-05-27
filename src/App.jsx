@@ -81,7 +81,7 @@ const DICE_DEFS = {
     stats:{ dmg:{base:40,cP:5,lP:10}, atkInt:{base:1.5,cM:0,lM:0} } },
   growth:      { name:"성장",   border:"#7700CC", bg:"#BB66FF", target:"first", minClass:7,
     ability:{ type:"growth" },
-    stats:{ dmg:{base:10,cP:5,lP:10}, atkInt:{base:2.0,cM:0,lM:0}, growthTime:{base:15,cM:1,lM:0} } },
+    stats:{ dmg:{base:10,cP:5,lP:10}, atkInt:{base:2.0,cM:0,lM:0}, growthTime:{base:21,cM:1,lM:0} } },
 };
 const DICE_KEYS = Object.keys(DICE_DEFS);
 const LV_COST = [100, 200, 400, 700];
@@ -465,6 +465,7 @@ function makePlayer(id, deck, rawClassLevels = {}) {
     dead: false,
     gameTime: 0, nextBossTime: 80,
     normalTimer: 10, bigTimer: 20, normalKillCount: 0,
+    bossRound: false,
     diceLevels: {},   // 인게임 파워업 레벨 { type: 1~5 }
     classLevels,      // 덱 빌더에서 설정한 클래스 레벨 { type: number }
   };
@@ -552,23 +553,27 @@ function applyHit(p, proj, tgt) {
 function tickPlayer(p, dt, onKill) {
   p.gameTime += dt;
 
-  // 80초마다 보스 스폰
-  if (p.gameTime >= p.nextBossTime && !p.enemies.some(e => e.isBoss)) {
-    p.enemies.push(spawnEnemy("boss", p.gameTime, p.wave));
-    p.nextBossTime += 80;
+  // 보스 라운드 진입
+  if (!p.bossRound && p.gameTime >= p.nextBossTime) {
+    const bonusHp = p.enemies.reduce((s, e) => s + Math.max(0, e.hp), 0) * 0.5;
+    const boss = spawnEnemy("boss", p.gameTime, p.wave);
+    boss.hp += bonusHp; boss.maxHp = boss.hp;
+    p.enemies = [boss];
+    p.bossRound = true;
   }
 
-  p.wave = Math.floor(p.gameTime / 80) + 1;
-
-  p.normalTimer -= dt;
-  if (p.normalTimer <= 0) {
-    p.enemies.push(spawnEnemy("normal", p.gameTime, p.wave));
-    p.normalTimer = 10;
-  }
-  p.bigTimer -= dt;
-  if (p.bigTimer <= 0) {
-    p.enemies.push(spawnEnemy("big", p.gameTime, p.wave));
-    p.bigTimer = 20;
+  // 보스 라운드가 아닐 때만 쫄몹/뚱몹 스폰
+  if (!p.bossRound) {
+    p.normalTimer -= dt;
+    if (p.normalTimer <= 0) {
+      p.enemies.push(spawnEnemy("normal", p.gameTime, p.wave));
+      p.normalTimer = 10;
+    }
+    p.bigTimer -= dt;
+    if (p.bigTimer <= 0) {
+      p.enemies.push(spawnEnemy("big", p.gameTime, p.wave));
+      p.bigTimer = 20;
+    }
   }
 
   const toRemove = new Set();
@@ -1055,6 +1060,21 @@ export default function App() {
     if (!p0.dead) tickPlayer(p0, dt, onKill0);
     if (!p1.dead) tickPlayer(p1, dt, onKill1);
 
+    // 양쪽 보스 처치 시 다음 웨이브
+    const p0BossClear = p0.bossRound && !p0.enemies.some(e=>e.isBoss);
+    const p1BossClear = p1.bossRound && !p1.enemies.some(e=>e.isBoss);
+    if ((p0BossClear || p0.dead) && (p1BossClear || p1.dead) && (p0.bossRound || p1.bossRound)) {
+      const nextWave = Math.max(p0.wave, p1.wave) + 1;
+      for (const p of [p0, p1]) {
+        if (p.dead) continue;
+        p.wave = nextWave;
+        p.bossRound = false;
+        p.normalTimer = 10;
+        p.bigTimer = 20;
+        p.nextBossTime = p.gameTime + 80;
+      }
+    }
+
     const alive = gsRef.current.players.filter(p=>!p.dead);
     if (alive.length < 2) { setWinner(alive.length===1?alive[0].id:-1); setPhase("over"); return; }
     rerender();
@@ -1169,6 +1189,7 @@ export default function App() {
   const [p0, p1] = gs.players;
   const bossTimeLeft = Math.max(0, p0.nextBossTime - p0.gameTime);
   const waveNum = p0.wave;
+  const inBossRound = p0.bossRound || p1.bossRound;
 
   return (
     <div style={{
@@ -1194,7 +1215,9 @@ export default function App() {
 
       <div style={{width:"100%",maxWidth:BW,display:"flex",alignItems:"center",justifyContent:"center",padding:"1px 0"}}>
         <div style={{background:"#111",color:"#fff",padding:"4px 20px",borderRadius:10,fontSize:13,fontWeight:800,letterSpacing:1,boxShadow:"0 2px 8px rgba(0,0,0,0.3)"}}>
-          Wave {waveNum} · 보스까지 {formatTime(bossTimeLeft)}
+          {inBossRound
+            ? `Wave ${waveNum} · ⚔️ BOSS ROUND`
+            : `Wave ${waveNum} · 보스까지 ${formatTime(bossTimeLeft)}`}
         </div>
       </div>
 
