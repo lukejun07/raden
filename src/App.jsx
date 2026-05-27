@@ -350,7 +350,7 @@ function makePlayer(id, deck) {
     wave: 1,
     dead: false,
     gameTime: 0, nextBossTime: 60,
-    normalTimer: 5, bigTimer: 10,
+    normalTimer: 5, bigTimer: 10, normalKillCount: 0,
   };
 }
 
@@ -420,8 +420,7 @@ function tickPlayer(p, dt, onKill) {
 
   p.normalTimer -= dt;
   if (p.normalTimer <= 0) {
-    const t = Math.random() < 0.3 ? "speed" : "normal";
-    p.enemies.push(spawnEnemy(t, p.gameTime, p.wave));
+    p.enemies.push(spawnEnemy("normal", p.gameTime, p.wave));
     p.normalTimer = 5;
   }
   p.bigTimer -= dt;
@@ -435,6 +434,13 @@ function tickPlayer(p, dt, onKill) {
     if (e.hp <= 0) {
       const reward = monSPReward(e.monType, p.wave);
       p.sp += reward;
+      if (e.monType === "normal") {
+        p.normalKillCount++;
+        if (p.normalKillCount >= 10) {
+          p.normalKillCount = 0;
+          p.enemies.push(spawnEnemy("speed", p.gameTime, p.wave));
+        }
+      }
       for (let k=0;k<6;k++) p.effects.push({id:uid(),type:"particle",x:e.x,y:e.y,vx:(Math.random()-.5)*140,vy:(Math.random()-.5)*140,color:e.color,size:3+Math.random()*5,life:0.5,maxLife:0.5});
       onKill && onKill(e);
       toRemove.add(e.id);
@@ -443,7 +449,7 @@ function tickPlayer(p, dt, onKill) {
     if (e.poison) {
       e.poison.timer += dt;
       while (e.poison.timer >= e.poison.tick) { e.poison.timer -= e.poison.tick; dealDmg(p,e,e.poison.dps*dt); }
-      if (e.hp <= 0) { const r=monSPReward(e.monType,p.wave); p.sp+=r; onKill&&onKill(e); toRemove.add(e.id); continue; }
+      if (e.hp <= 0) { const r=monSPReward(e.monType,p.wave); p.sp+=r; if(e.monType==="normal"){p.normalKillCount++;if(p.normalKillCount>=10){p.normalKillCount=0;p.enemies.push(spawnEnemy("speed",p.gameTime,p.wave));}} onKill&&onKill(e); toRemove.add(e.id); continue; }
     }
     if (e.slowTimer > 0) { e.slowTimer -= dt; if (e.slowTimer <= 0) e.slowStacks = 0; }
     if (e.locked > 0) { e.locked = Math.max(0, e.locked-dt); continue; }
@@ -825,24 +831,16 @@ export default function App() {
     lastTRef.current = ts;
     const [p0, p1] = gsRef.current.players;
 
-    const onKill0 = (e) => {
-      if (p1.dead) return;
-      const t = Math.random()<0.15?"big":Math.random()<0.3?"speed":"normal";
-      const bonus = spawnEnemy(t, p0.gameTime, p0.wave);
-      bonus.pathD = Math.random()*60;
+    const sendNormal = (from, to) => {
+      if (to.dead) return;
+      const bonus = spawnEnemy("normal", from.gameTime, from.wave);
+      bonus.pathD = Math.random() * 60;
       const pos = posOnPath(bonus.pathD);
       bonus.x = pos.x; bonus.y = pos.y;
-      p1.enemies.push(bonus);
+      to.enemies.push(bonus);
     };
-    const onKill1 = (e) => {
-      if (p0.dead) return;
-      const t = Math.random()<0.15?"big":Math.random()<0.3?"speed":"normal";
-      const bonus = spawnEnemy(t, p1.gameTime, p1.wave);
-      bonus.pathD = Math.random()*60;
-      const pos = posOnPath(bonus.pathD);
-      bonus.x = pos.x; bonus.y = pos.y;
-      p0.enemies.push(bonus);
-    };
+    const onKill0 = () => sendNormal(p0, p1);
+    const onKill1 = () => sendNormal(p1, p0);
 
     if (!p0.dead) tickPlayer(p0, dt, onKill0);
     if (!p1.dead) tickPlayer(p1, dt, onKill1);
