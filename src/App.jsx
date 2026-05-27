@@ -42,15 +42,33 @@ function posOnPath(d) {
 //  DICE DEFINITIONS (일반 등급 9종)
 // ═══════════════════════════════════════════════════════════════
 const DICE_DEFS = {
-  fire:     { name:"불",     border:"#E02020", bg:"#F87070", baseDmg:20,  atkSpeed:0.8,  target:"first",    ability:{ type:"splash",      dmg:20, radius:CELL*1.8 } },
-  electric: { name:"전기",   border:"#C89000", bg:"#F5CF50", baseDmg:30,  atkSpeed:0.7,  target:"first",    ability:{ type:"chain",       dmg:30, count:3, ratios:[1.0,0.7,0.3] } },
-  poison:   { name:"독",     border:"#44AA00", bg:"#88DD44", baseDmg:20,  atkSpeed:1.3,  target:"noPoison", ability:{ type:"poison",      dps:50, tick:1.0 } },
-  ice:      { name:"얼음",   border:"#0088EE", bg:"#55CCFF", baseDmg:30,  atkSpeed:1.5,  target:"first",    ability:{ type:"slow",        slowPct:5, maxStacks:3 } },
-  steel:    { name:"쇠",     border:"#666666", bg:"#AAAAAA", baseDmg:100, atkSpeed:1.0,  target:"strongest",ability:{ type:"bossKiller",  mult:2.0 } },
-  broken:   { name:"고장난", border:"#AA44CC", bg:"#CC88EE", baseDmg:50,  atkSpeed:0.9,  target:"random",   ability:{ type:"none" } },
-  gamble:   { name:"도박",   border:"#4422CC", bg:"#8866EE", baseDmg:7,   atkSpeed:1.0,  target:"first",    ability:{ type:"randomDmg",   critMult:5.0 } },
-  lock:     { name:"잠금",   border:"#334488", bg:"#667799", baseDmg:30,  atkSpeed:0.8,  target:"first",    ability:{ type:"lock",        prob:0.04, duration:3.0 } },
-  wind:     { name:"바람",   border:"#00AA88", bg:"#44DDBB", baseDmg:20,  atkSpeed:0.45, target:"first",    ability:{ type:"atkSpeedBuff",reductionPct:10 } },
+  fire:     { name:"불",     border:"#E02020", bg:"#F87070", target:"first",
+    ability:{ type:"splash", radius:CELL*1.8 },
+    stats:{ dmg:{base:20,dP:3,lP:10}, atkInt:{base:0.8,dM:0.01,lM:0}, splashDmg:{base:20,dP:3,lP:20} } },
+  electric: { name:"전기",   border:"#C89000", bg:"#F5CF50", target:"first",
+    ability:{ type:"chain", count:3, ratios:[1.0,0.7,0.3] },
+    stats:{ dmg:{base:30,dP:3,lP:10}, atkInt:{base:0.7,dM:0.02,lM:0}, chainDmg:{base:30,dP:3,lP:20} } },
+  poison:   { name:"독",     border:"#44AA00", bg:"#88DD44", target:"noPoison",
+    ability:{ type:"poison", tick:1.0 },
+    stats:{ dmg:{base:20,dP:2,lP:10}, atkInt:{base:1.3,dM:0,lM:0}, dotDps:{base:50,dP:5,lP:25} } },
+  ice:      { name:"얼음",   border:"#0088EE", bg:"#55CCFF", target:"first",
+    ability:{ type:"slow", maxStacks:3 },
+    stats:{ dmg:{base:30,dP:3,lP:30}, atkInt:{base:1.5,dM:0.02,lM:0}, slowPct:{base:5,dP:0.5,lP:2} } },
+  steel:    { name:"쇠",     border:"#666666", bg:"#AAAAAA", target:"strongest",
+    ability:{ type:"bossKiller", mult:2.0 },
+    stats:{ dmg:{base:100,dP:10,lP:100}, atkInt:{base:1.0,dM:0,lM:0} } },
+  broken:   { name:"고장난", border:"#AA44CC", bg:"#CC88EE", target:"random",
+    ability:{ type:"none" },
+    stats:{ dmg:{base:50,dP:10,lP:50}, atkInt:{base:0.9,dM:0,lM:0} } },
+  gamble:   { name:"도박",   border:"#4422CC", bg:"#8866EE", target:"first",
+    ability:{ type:"randomDmg" },
+    stats:{ dmg:{base:7,dP:10,lP:77}, atkInt:{base:1.0,dM:0.01,lM:0} } },
+  lock:     { name:"잠금",   border:"#334488", bg:"#667799", target:"first",
+    ability:{ type:"lock" },
+    stats:{ dmg:{base:30,dP:5,lP:20}, atkInt:{base:0.8,dM:0.01,lM:0}, lockProb:{base:4,dP:1,lP:2}, lockDur:{base:3,dP:0.2,lP:0.5} } },
+  wind:     { name:"바람",   border:"#00AA88", bg:"#44DDBB", target:"first",
+    ability:{ type:"windBuff" },
+    stats:{ dmg:{base:20,dP:3,lP:15}, atkInt:{base:0.45,dM:0,lM:0}, speedBuff:{base:10,dP:2,lP:10} } },
 };
 const DICE_KEYS = Object.keys(DICE_DEFS);
 const LV_COST = [100, 200, 400, 700];
@@ -313,6 +331,21 @@ const clamp = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
 const cellKey = (c,r) => `${c},${r}`;
 const cellXY = (c,r) => ({ x:(c+1)*CELL+CELL/2, y:(r+1)*CELL+CELL/2 });
 
+// stat = { base, dP?, dM?, lP?, lM? }, dot=1..7, level=1..5
+function getStat(s, dot, level) {
+  return s.base + (dot-1)*(s.dP||0) - (dot-1)*(s.dM||0)
+               + (level-1)*(s.lP||0) - (level-1)*(s.lM||0);
+}
+function getWindBuff(p) {
+  return Math.min(
+    Object.values(p.dice).reduce((sum,d) => {
+      if (!d || d.type !== "wind") return sum;
+      return sum + getStat(DICE_DEFS.wind.stats.speedBuff, d.dot, d.level) / 100;
+    }, 0),
+    0.9
+  );
+}
+
 function monSPReward(monType, wave) {
   if (monType === "boss") return wave * 100;
   if (monType === "big")  return wave * 50;
@@ -339,7 +372,7 @@ function spawnEnemy(monType, gameTime, wave) {
     speed: ms.speed * sm,
     pathD: 0, x: PATH_WP[0].x, y: PATH_WP[0].y,
     dist: PATH_SEG.total,
-    slowStacks: 0, slowTimer: 0, locked: 0, poison: null,
+    slowStacks: 0, slowTimer: 0, slowPctPerStack: 0, locked: 0, everLocked: false, poison: null,
   };
 }
 
@@ -355,9 +388,7 @@ function makePlayer(id, deck) {
 }
 
 function makeDice(type, dot = 1) {
-  const def = DICE_DEFS[type], ab = def.ability;
-  const cdBase = (1/def.atkSpeed) * (ab.type==="atkSpeedBuff" ? (1-ab.reductionPct/100) : 1);
-  return { id: uid(), type, dot, level: 1, cd: 0, cdBase };
+  return { id: uid(), type, dot, level: 1, cd: 0 };
 }
 
 function pickTarget(enemies, mode) {
@@ -381,30 +412,47 @@ function dealDmg(p, e, dmg) {
 
 function applyHit(p, proj, tgt) {
   const def = DICE_DEFS[proj.diceType], ab = def.ability;
-  const lm = 1 + (proj.level-1)*0.5;
   let dmg = proj.dmg;
   if (ab.type === "bossKiller" && tgt.isBoss) dmg *= ab.mult;
-  if (ab.type === "randomDmg") { const lo = def.baseDmg*lm; dmg = lo + Math.random()*(lo*4); }
-  const isCrit = Math.random() < 0.05;
-  if (isCrit) { dmg *= 2.0; spawnFx(p,"burst",tgt.x,tgt.y,"#FFD700"); }
+  if (ab.type === "randomDmg") {
+    dmg = proj.dmg + Math.random() * proj.dmg; // [1x, 2x] 크리티컬 데미지까지
+  } else {
+    if (Math.random() < 0.05) { dmg *= 2.0; spawnFx(p,"burst",tgt.x,tgt.y,"#FFD700"); }
+  }
   dealDmg(p, tgt, dmg);
   if (ab.type === "splash") {
-    for (const e of p.enemies) if (e.id!==tgt.id && e.hp>0 && Math.hypot(e.x-tgt.x,e.y-tgt.y)<=ab.radius) dealDmg(p,e,ab.dmg*lm);
+    const sd = getStat(def.stats.splashDmg, proj.dot, proj.level);
+    for (const e of p.enemies) if (e.id!==tgt.id && e.hp>0 && Math.hypot(e.x-tgt.x,e.y-tgt.y)<=ab.radius) dealDmg(p,e,sd);
     spawnFx(p,"burst",tgt.x,tgt.y,def.border);
   }
   if (ab.type === "chain") {
+    const cd = getStat(def.stats.chainDmg, proj.dot, proj.level);
     let last = tgt;
     for (let ci=0;ci<ab.count;ci++) {
       const nx = p.enemies.filter(e=>e.id!==tgt.id&&e.id!==last.id&&e.hp>0)
         .sort((a,b)=>Math.hypot(a.x-last.x,a.y-last.y)-Math.hypot(b.x-last.x,b.y-last.y))[0];
       if (!nx) break;
-      dealDmg(p, nx, ab.dmg*lm*ab.ratios[ci]);
+      dealDmg(p, nx, cd*ab.ratios[ci]);
       spawnFx(p,"chain",nx.x,nx.y,def.border); last = nx;
     }
   }
-  if (ab.type === "poison") tgt.poison = { dps: ab.dps*lm, timer:0, tick:ab.tick };
-  if (ab.type === "slow") { tgt.slowStacks = Math.min((tgt.slowStacks||0)+1, ab.maxStacks); tgt.slowTimer = 3; }
-  if (ab.type === "lock" && !tgt.locked && Math.random() < ab.prob) { tgt.locked = ab.duration; spawnFx(p,"lock",tgt.x,tgt.y,"#8090FF"); }
+  if (ab.type === "poison") {
+    tgt.poison = { dps: getStat(def.stats.dotDps, proj.dot, proj.level), timer:0, tick:ab.tick };
+  }
+  if (ab.type === "slow") {
+    const sp = getStat(def.stats.slowPct, proj.dot, proj.level);
+    tgt.slowStacks = Math.min((tgt.slowStacks||0)+1, ab.maxStacks);
+    tgt.slowPctPerStack = Math.max(tgt.slowPctPerStack||0, sp);
+    tgt.slowTimer = 3;
+  }
+  if (ab.type === "lock" && !tgt.everLocked) {
+    const prob = getStat(def.stats.lockProb, proj.dot, proj.level) / 100;
+    if (Math.random() < prob) {
+      tgt.locked = getStat(def.stats.lockDur, proj.dot, proj.level);
+      tgt.everLocked = true;
+      spawnFx(p,"lock",tgt.x,tgt.y,"#8090FF");
+    }
+  }
   spawnFx(p,"hit",tgt.x,tgt.y,def.border);
   spawnTxt(p,tgt.x,tgt.y,Math.round(dmg));
 }
@@ -455,7 +503,7 @@ function tickPlayer(p, dt, onKill) {
     }
     if (e.slowTimer > 0) { e.slowTimer -= dt; if (e.slowTimer <= 0) e.slowStacks = 0; }
     if (e.locked > 0) { e.locked = Math.max(0, e.locked-dt); continue; }
-    const sm = 1 - (e.slowStacks||0)*0.05;
+    const sm = 1 - (e.slowStacks||0)*(e.slowPctPerStack||5)/100;
     e.pathD += e.speed * clamp(sm,0.1,1) * dt;
     if (e.pathD >= PATH_SEG.total) {
       p.hearts = Math.max(0, p.hearts - e.heartDmg);
@@ -471,6 +519,7 @@ function tickPlayer(p, dt, onKill) {
 
   const newProjs = [];
   const dotSize = CELL - 12;
+  const windBuff = getWindBuff(p);
   for (const [key, d] of Object.entries(p.dice)) {
     if (!d) continue;
     d.cd -= dt; if (d.cd > 0) continue;
@@ -478,9 +527,9 @@ function tickPlayer(p, dt, onKill) {
     const {x:cx, y:cy} = cellXY(...key.split(",").map(Number));
     const live = p.enemies.filter(e=>e.hp>0); if (!live.length) continue;
 
-    // 현재 총구 인덱스
     d.subIdx = ((d.subIdx||0)) % d.dot;
-    d.cd = d.cdBase / d.dot; // 총구당 간격 = 전체주기/N
+    const atkInt = getStat(def.stats.atkInt, d.dot, d.level);
+    d.cd = (d.type==="wind" ? atkInt : atkInt*(1-windBuff)) / d.dot;
 
     const dotPositions = DOT_LAYOUTS[d.dot];
     if (!dotPositions || dotPositions === "star") continue;
@@ -488,13 +537,14 @@ function tickPlayer(p, dt, onKill) {
     const gunX = cx + (px/100 - 0.5) * dotSize;
     const gunY = cy + (py/100 - 0.5) * dotSize;
 
-    const dmg = def.baseDmg * (1+(d.level-1)*0.5);
+    const dmg = getStat(def.stats.dmg, d.dot, d.level);
     let tgt;
     if (def.target === "random") {
       tgt = live[Math.floor(Math.random() * live.length)];
     } else if (def.target === "noPoison") {
       const pool = live.filter(e => !e.poison);
-      tgt = (pool.length ? pool : live).reduce((a,b) => a.dist < b.dist ? a : b);
+      const candidates = pool.length ? pool : live;
+      tgt = candidates[Math.floor(Math.random() * candidates.length)];
     } else if (def.target === "strongest") {
       tgt = live.reduce((a,b) => a.hp > b.hp ? a : b);
     } else {
@@ -940,11 +990,7 @@ export default function App() {
     const cost = LV_COST[upgradeable[0].level - 1]; // 개수 무관 고정 비용
     if (p.sp < cost) return;
     p.sp -= cost;
-    const def = DICE_DEFS[diceType], ab = def.ability;
-    for (const d of upgradeable) {
-      d.level++;
-      d.cdBase = (1/def.atkSpeed)*(ab.type==="atkSpeedBuff"?(1-ab.reductionPct/100):1);
-    }
+    for (const d of upgradeable) d.level++;
     rerender();
   }, [rerender]);
 
