@@ -734,20 +734,17 @@ function tickPlayer(p, dt, onKill) {
     const projColor = def.border === "#RAINBOW" ? `hsl(${(Date.now()/10)%360},100%,50%)` : def.border;
     const projBase = {diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:1560,tx:tgt.x,ty:tgt.y,diceKey:key,sunCount};
 
+    d.cd = atkInt * (1 - totalBuff) / d.dot;
+    let gunX, gunY;
     if (dotPositions === "star") {
-      // 7성: 동시에 7발 부채꼴 발사, CD = 전체 atkInt
-      d.cd = atkInt * (1 - totalBuff);
-      for (let si=0; si<7; si++) {
-        newProjs.push({...projBase, id:uid(), x:cx, y:cy, targetId:tgt.id, dmg, angleSpread:(si-3)*0.07});
-      }
+      gunX = cx; gunY = cy;
     } else {
-      d.cd = atkInt * (1 - totalBuff) / d.dot;
       const [px, py] = dotPositions[d.subIdx];
-      const gunX = cx + (px/100 - 0.5) * dotSize;
-      const gunY = cy + (py/100 - 0.5) * dotSize;
-      newProjs.push({...projBase, id:uid(), x:gunX, y:gunY, targetId:tgt.id, dmg, angleSpread:0});
-      d.subIdx = (d.subIdx + 1) % d.dot;
+      gunX = cx + (px/100 - 0.5) * dotSize;
+      gunY = cy + (py/100 - 0.5) * dotSize;
     }
+    newProjs.push({...projBase, id:uid(), x:gunX, y:gunY, targetId:tgt.id, dmg, angleSpread:0});
+    d.subIdx = (d.subIdx + 1) % d.dot;
   }
 
   const hitIds = new Set();
