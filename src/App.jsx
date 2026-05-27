@@ -72,14 +72,14 @@ const DICE_DEFS = {
     ability:{ type:"windBuff" },
     stats:{ dmg:{base:20,cP:3,lP:15}, atkInt:{base:0.45,cM:0,lM:0}, speedBuff:{base:10,cP:2,lP:10} } },
   // ── 희귀 등급 ──
-  gamblegrowth:{ name:"도박성장", border:"#BB8800", bg:"#FFDD44", target:"first",
+  gamblegrowth:{ name:"도박성장", border:"#BB8800", bg:"#FFDD44", target:"first", minClass:3,
     ability:{ type:"gamblegrowth" },
     stats:{ dmg:{base:30,cP:0,lP:0}, atkInt:{base:1.0,cM:0,lM:0}, growthTime:{base:45,cM:1,lM:1} } },
   // ── 전설 등급 ──
-  joker:       { name:"조커",   border:"#RAINBOW", bg:"#FFFFFF", target:"first",
+  joker:       { name:"조커",   border:"#RAINBOW", bg:"#FFFFFF", target:"first", minClass:7,
     ability:{ type:"joker" },
     stats:{ dmg:{base:40,cP:5,lP:10}, atkInt:{base:1.5,cM:0,lM:0} } },
-  growth:      { name:"성장",   border:"#7700CC", bg:"#BB66FF", target:"first",
+  growth:      { name:"성장",   border:"#7700CC", bg:"#BB66FF", target:"first", minClass:7,
     ability:{ type:"growth" },
     stats:{ dmg:{base:10,cP:5,lP:10}, atkInt:{base:2.0,cM:0,lM:0}, growthTime:{base:15,cM:1,lM:0} } },
 };
@@ -453,7 +453,11 @@ function spawnEnemy(monType, gameTime, wave) {
   };
 }
 
-function makePlayer(id, deck, classLevels = {}) {
+function makePlayer(id, deck, rawClassLevels = {}) {
+  // minClass 미만으로 설정된 값은 minClass로 올려줌
+  const classLevels = Object.fromEntries(
+    deck.map(t => [t, Math.max(rawClassLevels[t]||1, DICE_DEFS[t]?.minClass||1)])
+  );
   return {
     id, deck, sp: 100, summonCost: 10, hearts: 3,
     dice: {}, enemies: [], projs: [], effects: [],
@@ -646,7 +650,7 @@ function tickPlayer(p, dt, onKill) {
       tgt = live.reduce((a,b) => a.dist < b.dist ? a : b);
     }
     const projColor = def.border === "#RAINBOW" ? `hsl(${(Date.now()/10)%360},100%,50%)` : def.border;
-    newProjs.push({id:uid(),x:gunX,y:gunY,targetId:tgt.id,dmg,diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:520,angleSpread:0,tx:tgt.x,ty:tgt.y});
+    newProjs.push({id:uid(),x:gunX,y:gunY,targetId:tgt.id,dmg,diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:1560,angleSpread:0,tx:tgt.x,ty:tgt.y});
     d.subIdx = (d.subIdx + 1) % d.dot;
   }
 
@@ -922,8 +926,8 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
 //  DECK BUILDER
 // ═══════════════════════════════════════════════════════════════
 const CLASS_MAX = 15;
-function ClassStepper({ value, onChange, color }) {
-  const v = value || 1;
+function ClassStepper({ value, onChange, color, minClass = 1 }) {
+  const v = Math.max(value || minClass, minClass);
   const btnStyle = (disabled) => ({
     width:20, height:20, border:`1px solid ${disabled?"#ddd":color}`, borderRadius:4,
     background: disabled?"#f5f5f5":"#fff", color: disabled?"#bbb":color,
@@ -932,7 +936,7 @@ function ClassStepper({ value, onChange, color }) {
   });
   return (
     <div style={{display:"flex",alignItems:"center",gap:3}} onClick={e=>e.stopPropagation()}>
-      <button style={btnStyle(v<=1)} onClick={()=>onChange(Math.max(1,v-1))}>−</button>
+      <button style={btnStyle(v<=minClass)} onClick={()=>onChange(Math.max(minClass,v-1))}>−</button>
       <span style={{fontSize:11,fontWeight:800,color,minWidth:28,textAlign:"center"}}>C{v}</span>
       <button style={btnStyle(v>=CLASS_MAX)} onClick={()=>onChange(Math.min(CLASS_MAX,v+1))}>+</button>
     </div>
@@ -957,7 +961,7 @@ function DeckPanel({ label, deck, setDeck, accent, classLevels, setClass }) {
               <div style={{fontSize:10,color:"#999"}}>{d.ability.type}</div>
             </div>
             {sel
-              ? <ClassStepper value={classLevels[k]||1} onChange={v=>setClass(k,v)} color={d.border}/>
+              ? <ClassStepper value={classLevels[k]||d.minClass||1} onChange={v=>setClass(k,v)} color={d.border==="#RAINBOW"?"#AA00AA":d.border} minClass={d.minClass||1}/>
               : <span style={{fontSize:10,color:"#ccc"}}>C1</span>
             }
           </div>
