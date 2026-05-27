@@ -58,13 +58,15 @@ const LV_COST = [100, 200, 400, 700];
 // ═══════════════════════════════════════════════════════════════
 //  SVG DICE
 // ═══════════════════════════════════════════════════════════════
+// 3x3 그리드 위치 (1~9): 1=좌상, 2=중상, 3=우상, 4=좌중, 5=중, 6=우중, 7=좌하, 8=중하, 9=우하
+const G = [null,[25,25],[50,25],[75,25],[25,50],[50,50],[75,50],[25,75],[50,75],[75,75]];
 const DOT_LAYOUTS = {
-  1:[[50,50]],
-  2:[[30,30],[70,70]],
-  3:[[30,30],[50,50],[70,70]],
-  4:[[30,30],[70,30],[30,70],[70,70]],
-  5:[[30,30],[70,30],[50,50],[30,70],[70,70]],
-  6:[[28,25],[72,25],[28,50],[72,50],[28,75],[72,75]],
+  1:[G[5]],
+  2:[G[1],G[9]],
+  3:[G[1],G[5],G[9]],
+  4:[G[1],G[3],G[7],G[9]],
+  5:[G[1],G[3],G[5],G[7],G[9]],
+  6:[G[1],G[3],G[4],G[6],G[7],G[9]],
   7:"star",
 };
 
@@ -475,25 +477,33 @@ function tickPlayer(p, dt, onKill) {
   }
 
   const newProjs = [];
+  const dotSize = CELL - 12;
   for (const [key, d] of Object.entries(p.dice)) {
     if (!d) continue;
     d.cd -= dt; if (d.cd > 0) continue;
     const def = DICE_DEFS[d.type];
     const {x:cx, y:cy} = cellXY(...key.split(",").map(Number));
     const live = p.enemies.filter(e=>e.hp>0); if (!live.length) continue;
-    const tgt = pickTarget(live, def.target); if (!tgt) continue;
-    d.cd = d.cdBase;
+
+    // 현재 총구 인덱스
+    d.subIdx = ((d.subIdx||0)) % d.dot;
+    d.cd = d.cdBase / d.dot; // 총구당 간격 = 전체주기/N
+
+    const dotPositions = DOT_LAYOUTS[d.dot];
+    if (!dotPositions || dotPositions === "star") continue;
+    const [px, py] = dotPositions[d.subIdx];
+    const gunX = cx + (px/100 - 0.5) * dotSize;
+    const gunY = cy + (py/100 - 0.5) * dotSize;
+
     const dmg = def.baseDmg * (1+(d.dot-1)*0.3) * (1+(d.level-1)*0.5);
-    // N-dot: 최대 N개 타겟을 순환하며 1발씩 발사
     const sorted = [...live].sort((a,b) => {
       if (def.target==="first") return a.dist-b.dist;
       if (def.target==="strongest") return b.hp-a.hp;
       return 0;
     });
-    const pool = sorted.slice(0, d.dot);
-    d.fireIdx = ((d.fireIdx||0) + 1) % pool.length;
-    const chosen = pool[d.fireIdx];
-    newProjs.push({id:uid(),x:cx,y:cy,targetId:chosen.id,dmg,diceType:d.type,dot:d.dot,level:d.level,color:def.border,speed:520,angleSpread:0,tx:chosen.x,ty:chosen.y});
+    const tgt = sorted[d.subIdx % sorted.length];
+    newProjs.push({id:uid(),x:gunX,y:gunY,targetId:tgt.id,dmg,diceType:d.type,dot:d.dot,level:d.level,color:def.border,speed:520,angleSpread:0,tx:tgt.x,ty:tgt.y});
+    d.subIdx = (d.subIdx + 1) % d.dot;
   }
 
   const hitIds = new Set();
@@ -677,11 +687,11 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
     const def = DICE_DEFS[type];
     const onBoard = Object.values(p.dice).filter(d => d && d.type === type);
     const upgradeable = onBoard.filter(d => d.level < 5);
-    const totalCost = upgradeable.reduce((s, d) => s + LV_COST[d.level-1], 0);
     const minLevel = onBoard.length ? Math.min(...onBoard.map(d => d.level)) : 1;
+    const fixedCost = upgradeable.length > 0 ? LV_COST[upgradeable[0].level - 1] : 0;
     const allMax = onBoard.length > 0 && upgradeable.length === 0;
-    const canUp = onBoard.length > 0 && upgradeable.length > 0 && p.sp >= totalCost;
-    return { type, def, onBoard: onBoard.length, minLevel, totalCost, allMax, canUp };
+    const canUp = onBoard.length > 0 && upgradeable.length > 0 && p.sp >= fixedCost;
+    return { type, def, onBoard: onBoard.length, minLevel, fixedCost, allMax, canUp };
   });
 
   return (
@@ -721,7 +731,7 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
         </div>
 
         <div style={{display:"flex",gap:6,flexWrap:"wrap",flex:1,minHeight:74}}>
-          {diceList.map(({ type, def, onBoard, minLevel, totalCost, allMax, canUp }) => (
+          {diceList.map(({ type, def, onBoard, minLevel, fixedCost, allMax, canUp }) => (
             <div key={type} onClick={()=>canUp && onLevelUp(type)}
               style={{
                 display:"flex",flexDirection:"column",alignItems:"center",gap:2,
@@ -740,7 +750,7 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
                 {onBoard > 0 ? `Lv.${minLevel}` : "없음"}
               </div>
               <div style={{fontSize:8,color:canUp?def.border:"#aab",fontWeight:"bold",lineHeight:1}}>
-                {onBoard===0 ? "-" : allMax ? "MAX" : `${totalCost}SP`}
+                {onBoard===0 ? "-" : allMax ? "MAX" : `${fixedCost}SP`}
               </div>
             </div>
           ))}
@@ -947,9 +957,9 @@ export default function App() {
     const p = gsRef.current?.players[pid]; if (!p) return;
     const upgradeable = Object.values(p.dice).filter(d => d && d.type===diceType && d.level<5);
     if (!upgradeable.length) return;
-    const totalCost = upgradeable.reduce((s, d) => s + LV_COST[d.level-1], 0);
-    if (p.sp < totalCost) return;
-    p.sp -= totalCost;
+    const cost = LV_COST[upgradeable[0].level - 1]; // 개수 무관 고정 비용
+    if (p.sp < cost) return;
+    p.sp -= cost;
     const def = DICE_DEFS[diceType], ab = def.ability;
     for (const d of upgradeable) {
       d.level++;
