@@ -381,15 +381,15 @@ function dealDmg(p, e, dmg) {
 
 function applyHit(p, proj, tgt) {
   const def = DICE_DEFS[proj.diceType], ab = def.ability;
-  const lm = 1 + (proj.level-1)*0.5, dm = 1 + (proj.dot-1)*0.3;
+  const lm = 1 + (proj.level-1)*0.5;
   let dmg = proj.dmg;
   if (ab.type === "bossKiller" && tgt.isBoss) dmg *= ab.mult;
-  if (ab.type === "randomDmg") { const lo = def.baseDmg*dm*lm; dmg = lo + Math.random()*(lo*4); }
+  if (ab.type === "randomDmg") { const lo = def.baseDmg*lm; dmg = lo + Math.random()*(lo*4); }
   const isCrit = Math.random() < 0.05;
   if (isCrit) { dmg *= 2.0; spawnFx(p,"burst",tgt.x,tgt.y,"#FFD700"); }
   dealDmg(p, tgt, dmg);
   if (ab.type === "splash") {
-    for (const e of p.enemies) if (e.id!==tgt.id && e.hp>0 && Math.hypot(e.x-tgt.x,e.y-tgt.y)<=ab.radius) dealDmg(p,e,ab.dmg*dm*lm);
+    for (const e of p.enemies) if (e.id!==tgt.id && e.hp>0 && Math.hypot(e.x-tgt.x,e.y-tgt.y)<=ab.radius) dealDmg(p,e,ab.dmg*lm);
     spawnFx(p,"burst",tgt.x,tgt.y,def.border);
   }
   if (ab.type === "chain") {
@@ -398,11 +398,11 @@ function applyHit(p, proj, tgt) {
       const nx = p.enemies.filter(e=>e.id!==tgt.id&&e.id!==last.id&&e.hp>0)
         .sort((a,b)=>Math.hypot(a.x-last.x,a.y-last.y)-Math.hypot(b.x-last.x,b.y-last.y))[0];
       if (!nx) break;
-      dealDmg(p, nx, ab.dmg*dm*lm*ab.ratios[ci]);
+      dealDmg(p, nx, ab.dmg*lm*ab.ratios[ci]);
       spawnFx(p,"chain",nx.x,nx.y,def.border); last = nx;
     }
   }
-  if (ab.type === "poison") tgt.poison = { dps: ab.dps*dm*lm, timer:0, tick:ab.tick };
+  if (ab.type === "poison") tgt.poison = { dps: ab.dps*lm, timer:0, tick:ab.tick };
   if (ab.type === "slow") { tgt.slowStacks = Math.min((tgt.slowStacks||0)+1, ab.maxStacks); tgt.slowTimer = 3; }
   if (ab.type === "lock" && !tgt.locked && Math.random() < ab.prob) { tgt.locked = ab.duration; spawnFx(p,"lock",tgt.x,tgt.y,"#8090FF"); }
   spawnFx(p,"hit",tgt.x,tgt.y,def.border);
@@ -488,7 +488,7 @@ function tickPlayer(p, dt, onKill) {
     const gunX = cx + (px/100 - 0.5) * dotSize;
     const gunY = cy + (py/100 - 0.5) * dotSize;
 
-    const dmg = def.baseDmg * (1+(d.dot-1)*0.3) * (1+(d.level-1)*0.5);
+    const dmg = def.baseDmg * (1+(d.level-1)*0.5);
     let tgt;
     if (def.target === "random") {
       tgt = live[Math.floor(Math.random() * live.length)];
