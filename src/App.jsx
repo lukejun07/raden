@@ -348,7 +348,7 @@ function makePlayer(id, deck) {
     id, deck, sp: 100, summonCost: 10, hearts: 3,
     dice: {}, enemies: [], projs: [], effects: [],
     wave: 1,
-    dead: false, score: 0,
+    dead: false,
     gameTime: 0, nextBossTime: 60,
     normalTimer: 5, bigTimer: 10,
   };
@@ -435,7 +435,6 @@ function tickPlayer(p, dt, onKill) {
     if (e.hp <= 0) {
       const reward = monSPReward(e.monType, p.wave);
       p.sp += reward;
-      p.score += reward * 10;
       for (let k=0;k<6;k++) p.effects.push({id:uid(),type:"particle",x:e.x,y:e.y,vx:(Math.random()-.5)*140,vy:(Math.random()-.5)*140,color:e.color,size:3+Math.random()*5,life:0.5,maxLife:0.5});
       onKill && onKill(e);
       toRemove.add(e.id);
@@ -444,7 +443,7 @@ function tickPlayer(p, dt, onKill) {
     if (e.poison) {
       e.poison.timer += dt;
       while (e.poison.timer >= e.poison.tick) { e.poison.timer -= e.poison.tick; dealDmg(p,e,e.poison.dps*dt); }
-      if (e.hp <= 0) { const r=monSPReward(e.monType,p.wave); p.sp+=r; p.score+=r*10; onKill&&onKill(e); toRemove.add(e.id); continue; }
+      if (e.hp <= 0) { const r=monSPReward(e.monType,p.wave); p.sp+=r; onKill&&onKill(e); toRemove.add(e.id); continue; }
     }
     if (e.slowTimer > 0) { e.slowTimer -= dt; if (e.slowTimer <= 0) e.slowStacks = 0; }
     if (e.locked > 0) { e.locked = Math.max(0, e.locked-dt); continue; }
@@ -596,7 +595,7 @@ function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, 
             pointerEvents:"none", zIndex:15,
             filter: e.locked>0?"brightness(0.5)":e.slowStacks>0?"hue-rotate(180deg)":e.poison?"hue-rotate(80deg)":"none",
           }}>
-            {e.isBoss && (
+            {e.isBoss ? (
               <div style={{
                 ...anti,
                 position:"absolute", top:-14, left:"50%", transform:`translateX(-50%)${flipped?" scaleY(-1)":""}`,
@@ -608,6 +607,10 @@ function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, 
                   </div>
                   <div style={{fontSize:8,color:"#fff",fontWeight:"bold",lineHeight:1}}>{Math.ceil(e.hp).toLocaleString()}</div>
                 </div>
+              </div>
+            ) : (
+              <div style={{...anti,fontSize:sz<=22?8:10,fontWeight:"bold",color:"#fff",textShadow:"0 1px 2px rgba(0,0,0,0.8)",lineHeight:1,pointerEvents:"none"}}>
+                {dispHp && dispHp > 0 ? dispHp : ""}
               </div>
             )}
           </div>
@@ -678,7 +681,6 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
         {!isFury&&isDeath&&<span style={{fontSize:9,color:"#f80",background:"#fff8f0",border:"1px solid #f80",borderRadius:4,padding:"1px 4px",fontWeight:"bold"}}>⚡데스</span>}
         <div style={{flex:1}}/>
         <span style={{fontSize:13,fontWeight:800,color:"#334"}}>💰 {Math.floor(p.sp)} SP</span>
-        <span style={{fontSize:10,color:"#99a"}}>🏆{p.score.toLocaleString()}</span>
       </div>
 
       <div style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 12px"}}>
@@ -784,7 +786,6 @@ function GameOver({ winner, gs, onRestart }) {
             <div style={{fontWeight:800,color:i===0?"#3355EE":"#EE3355",marginBottom:6}}>P{i+1}</div>
             <div style={{fontSize:18}}>{"❤️".repeat(p.hearts)}{"🖤".repeat(Math.max(0,3-p.hearts))}</div>
             <div style={{fontSize:13,color:"#667",marginTop:6}}>웨이브 {p.wave}</div>
-            <div style={{fontSize:13,color:"#667"}}>점수 {p.score.toLocaleString()}</div>
           </div>
         ))}
       </div>
