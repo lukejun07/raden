@@ -102,40 +102,41 @@ function DotLayer({ dot, color, size }) {
   );
 }
 
+let _dcCtr = 0;
 function DiceCard({ size, border, children }) {
+  const uid = useRef(`dc${_dcCtr++}`).current;
   const S = size;
   const rx = S * 0.2;
   const pad = S * 0.1;
-  const uid_b = border.replace("#","");
   return (
     <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{ display:"block" }}>
       <defs>
-        <linearGradient id={`inner_${uid_b}`} x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`inner_${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FFFFFF" />
           <stop offset="100%" stopColor="#F0F2F8" />
         </linearGradient>
-        <linearGradient id={`glim_${uid_b}`} x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`glim_${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%"   stopColor="white" stopOpacity="0.0" />
           <stop offset="35%"  stopColor="white" stopOpacity="0.7" />
           <stop offset="52%"  stopColor="white" stopOpacity="0.7" />
           <stop offset="100%" stopColor="white" stopOpacity="0.0" />
         </linearGradient>
-        <filter id={`sh_${uid_b}`} x="-10%" y="-10%" width="120%" height="120%">
+        <filter id={`sh_${uid}`} x="-10%" y="-10%" width="120%" height="120%">
           <feDropShadow dx="0" dy={S*0.025} stdDeviation={S*0.04} floodColor="rgba(0,0,0,0.28)" />
         </filter>
-        <clipPath id={`clip_${uid_b}`}>
+        <clipPath id={`clip_${uid}`}>
           <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65}/>
         </clipPath>
       </defs>
       <rect x="1" y="1" width={S-2} height={S-2} rx={rx}
-        fill={border} filter={`url(#sh_${uid_b})`}/>
+        fill={border} filter={`url(#sh_${uid})`}/>
       <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65}
-        fill={`url(#inner_${uid_b})`}/>
-      <g clipPath={`url(#clip_${uid_b})`}>
+        fill={`url(#inner_${uid})`}/>
+      <g clipPath={`url(#clip_${uid})`}>
         {children}
       </g>
       <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65}
-        fill={`url(#glim_${uid_b})`}/>
+        fill={`url(#glim_${uid})`}/>
     </svg>
   );
 }
@@ -507,8 +508,7 @@ function tickPlayer(p, dt, onKill) {
   }
 
   const hitIds = new Set();
-  const all = [...p.projs, ...newProjs];
-  for (const pr of all) {
+  for (const pr of p.projs) {
     if (hitIds.has(pr.id)) continue;
     const tgt = p.enemies.find(e=>e.id===pr.targetId&&e.hp>0);
     const tx = tgt?tgt.x:pr.tx, ty = tgt?tgt.y:pr.ty;
@@ -517,7 +517,8 @@ function tickPlayer(p, dt, onKill) {
     if (dist <= step+3) { hitIds.add(pr.id); if(tgt&&tgt.hp>0) applyHit(p,pr,tgt); }
     else { const a=Math.atan2(dy,dx)+pr.angleSpread; pr.x+=Math.cos(a)*step; pr.y+=Math.sin(a)*step; }
   }
-  p.projs = all.filter(pr=>!hitIds.has(pr.id));
+  // newProjs are NOT moved this tick so they render at the exact gun position first
+  p.projs = [...p.projs.filter(pr=>!hitIds.has(pr.id)), ...newProjs];
 
   p.effects = p.effects
     .map(ef => ({...ef, life:ef.life-dt, x:ef.x+(ef.vx||0)*dt, y:ef.y+(ef.vy||0)*dt}))
