@@ -70,15 +70,15 @@ const DICE_DEFS = {
   wind:        { name:"바람",   border:"#00AA88", bg:"#44DDBB", target:"first",
     ability:{ type:"windBuff" },
     stats:{ dmg:{base:20,dP:3,lP:15}, atkInt:{base:0.45,dM:0,lM:0}, speedBuff:{base:10,dP:2,lP:10} } },
-  // ── 희귀 등급 (spawnDot:3) ──
-  gamblegrowth:{ name:"도박성장", border:"#CC7700", bg:"#FFAA33", target:"first", spawnDot:3,
+  // ── 희귀 등급 ──
+  gamblegrowth:{ name:"도박성장", border:"#CC7700", bg:"#FFAA33", target:"first",
     ability:{ type:"gamblegrowth" },
     stats:{ dmg:{base:30,dP:0,lP:0}, atkInt:{base:1.0,dM:0,lM:0}, growthTime:{base:45,dM:1,lM:1} } },
-  // ── 전설 등급 (spawnDot:7) ──
-  joker:       { name:"조커",   border:"#880088", bg:"#DD44CC", target:"first", spawnDot:7,
+  // ── 전설 등급 ──
+  joker:       { name:"조커",   border:"#880088", bg:"#DD44CC", target:"first",
     ability:{ type:"joker" },
     stats:{ dmg:{base:40,dP:5,lP:10}, atkInt:{base:1.5,dM:0,lM:0} } },
-  growth:      { name:"성장",   border:"#228800", bg:"#66CC33", target:"first", spawnDot:7,
+  growth:      { name:"성장",   border:"#228800", bg:"#66CC33", target:"first",
     ability:{ type:"growth" },
     stats:{ dmg:{base:10,dP:5,lP:10}, atkInt:{base:2.0,dM:0,lM:0}, growthTime:{base:15,dM:1,lM:0} } },
 };
@@ -442,7 +442,7 @@ function makePlayer(id, deck) {
 
 function makeDice(type, dot, level) {
   const def = DICE_DEFS[type];
-  const startDot = (dot !== undefined) ? dot : (def.spawnDot || 1);
+  const startDot = (dot !== undefined) ? dot : 1;
   const lvl = level || 1;
   const d = { id: uid(), type, dot: startDot, level: 1, cd: 0, subIdx: 0 };
   if (def.stats.growthTime) {
@@ -867,7 +867,7 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
                 transition:"all .12s",
                 minWidth:50,
               }}>
-              <DiceSVG type={type} dot={def.spawnDot||1} size={34}/>
+              <DiceSVG type={type} dot={3} size={34}/>
               <div style={{fontSize:9,fontWeight:700,color:"#334",lineHeight:1}}>
                 {onBoard > 0 ? `Lv.${curLevel}` : "없음"}
               </div>
@@ -897,7 +897,7 @@ function DeckPanel({ label, deck, setDeck, accent }) {
         const d=DICE_DEFS[k]; const sel=deck.includes(k);
         return (
           <div key={k} onClick={()=>toggle(k)} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",marginBottom:4,background:sel?`${d.border}14`:"#F8F9FF",border:sel?`1.5px solid ${d.border}`:"1.5px solid #E8ECF8",borderRadius:9,cursor:"pointer",transition:"all .12s"}}>
-            <DiceSVG type={k} dot={d.spawnDot||3} size={42}/>
+            <DiceSVG type={k} dot={3} size={42}/>
             <div style={{flex:1}}>
               <div style={{fontSize:12,fontWeight:sel?800:500,color:sel?d.border:"#334"}}>{d.name}</div>
               <div style={{fontSize:10,color:"#999"}}>{d.ability.type}</div>
