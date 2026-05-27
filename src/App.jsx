@@ -336,14 +336,10 @@ function getStat(s, dot, level) {
   return s.base + (dot-1)*(s.dP||0) - (dot-1)*(s.dM||0)
                + (level-1)*(s.lP||0) - (level-1)*(s.lM||0);
 }
-function getWindBuff(p) {
-  return Math.min(
-    Object.values(p.dice).reduce((sum,d) => {
-      if (!d || d.type !== "wind") return sum;
-      return sum + getStat(DICE_DEFS.wind.stats.speedBuff, d.dot, d.level) / 100;
-    }, 0),
-    0.9
-  );
+function getSelfSpeedBuff(d) {
+  const def = DICE_DEFS[d.type];
+  if (!def.stats.speedBuff) return 0;
+  return Math.min(getStat(def.stats.speedBuff, d.dot, d.level) / 100, 0.95);
 }
 
 function monSPReward(monType, wave) {
@@ -519,7 +515,6 @@ function tickPlayer(p, dt, onKill) {
 
   const newProjs = [];
   const dotSize = CELL - 12;
-  const windBuff = getWindBuff(p);
   for (const [key, d] of Object.entries(p.dice)) {
     if (!d) continue;
     d.cd -= dt; if (d.cd > 0) continue;
@@ -529,7 +524,8 @@ function tickPlayer(p, dt, onKill) {
 
     d.subIdx = ((d.subIdx||0)) % d.dot;
     const atkInt = getStat(def.stats.atkInt, d.dot, d.level);
-    d.cd = (d.type==="wind" ? atkInt : atkInt*(1-windBuff)) / d.dot;
+    const selfBuff = getSelfSpeedBuff(d);
+    d.cd = atkInt * (1 - selfBuff) / d.dot;
 
     const dotPositions = DOT_LAYOUTS[d.dot];
     if (!dotPositions || dotPositions === "star") continue;
