@@ -316,30 +316,32 @@ function monSPReward(monType, wave) {
   return wave * 10;
 }
 
+function calcBaseHP(gameTime) {
+  return 100 * (1 + Math.floor(gameTime / 10));
+}
+
 function buildWave(wave) {
-  const isDeath = wave >= 7, isFury = wave >= 11;
   const count = 6 + wave * 2;
-  const sm = (isDeath ? 1.35 : 1) * (isFury ? 1.3 : 1);
   return Array.from({length: count}, (_, i) => {
-    const isBoss = i === count - 1;
-    const t = isBoss ? "boss" : Math.random() < 0.15 ? "big" : Math.random() < 0.3 ? "speed" : "normal";
-    const hpMult = (1 + wave * 0.25) * (isFury && isBoss ? 2 : 1);
-    return { monType: t, hpMult, sm, delay: i * 1.4 };
+    const t = Math.random() < 0.15 ? "big" : Math.random() < 0.3 ? "speed" : "normal";
+    return { monType: t, delay: i * 1.4 };
   });
 }
 
-function spawnEnemy(spec, wave) {
-  const ms = MON_SPECS[spec.monType];
-  // 보스 HP: 25000 * wave (잔여 몬스터 HP는 스폰 시점에 계산 불가하여 기본값)
-  const hp = spec.monType === "boss"
-    ? ms.hpBase * wave
-    : ms.hpBase * spec.hpMult;
+function spawnEnemy(monType, gameTime, wave) {
+  const ms = MON_SPECS[monType];
+  const base = calcBaseHP(gameTime);
+  const hp = monType === "big"  ? base * 10
+            : monType === "boss" ? base * 30
+            : base;
+  const isDeath = wave >= 7, isFury = wave >= 11;
+  const sm = (isDeath ? 1.35 : 1) * (isFury ? 1.3 : 1);
   return {
-    id: uid(), monType: spec.monType,
+    id: uid(), monType,
     w: ms.w, h: ms.h, shape: ms.shape, color: ms.color,
     heartDmg: ms.heartDmg, isBoss: ms.isBoss,
     hp, maxHp: hp,
-    speed: ms.speed * (spec.sm || 1),
+    speed: ms.speed * sm,
     pathD: 0, x: PATH_WP[0].x, y: PATH_WP[0].y,
     dist: PATH_SEG.total,
     slowStacks: 0, slowTimer: 0, locked: 0, poison: null,
@@ -353,6 +355,7 @@ function makePlayer(id, deck) {
     wave: 0, waveActive: false,
     spawnQueue: [], spawnTimer: 0, waveTimer: 5,
     dead: false, score: 0,
+    gameTime: 0, nextBossTime: 60,
   };
 }
 
@@ -410,6 +413,14 @@ function applyHit(p, proj, tgt) {
 }
 
 function tickPlayer(p, dt, onKill) {
+  p.gameTime += dt;
+
+  // 60초마다 보스 스폰
+  if (p.gameTime >= p.nextBossTime && !p.enemies.some(e => e.isBoss)) {
+    p.enemies.push(spawnEnemy("boss", p.gameTime, p.wave));
+    p.nextBossTime += 60;
+  }
+
   if (!p.waveActive) {
     p.waveTimer -= dt;
     if (p.waveTimer <= 0) {
@@ -422,7 +433,7 @@ function tickPlayer(p, dt, onKill) {
   if (p.waveActive && p.spawnQueue.length) {
     p.spawnTimer += dt;
     while (p.spawnQueue.length && p.spawnTimer >= p.spawnQueue[0].delay) {
-      p.enemies.push(spawnEnemy(p.spawnQueue.shift(), p.wave));
+      p.enemies.push(spawnEnemy(p.spawnQueue.shift().monType, p.gameTime, p.wave));
     }
   }
 
@@ -471,13 +482,18 @@ function tickPlayer(p, dt, onKill) {
     const {x:cx, y:cy} = cellXY(...key.split(",").map(Number));
     const live = p.enemies.filter(e=>e.hp>0); if (!live.length) continue;
     const tgt = pickTarget(live, def.target); if (!tgt) continue;
-    d.cd = d.cdBase / (1+(d.dot-1)*0.03);
+    d.cd = d.cdBase;
     const dmg = def.baseDmg * (1+(d.dot-1)*0.3) * (1+(d.level-1)*0.5);
-    const pc = d.dot;
-    for (let pi=0;pi<pc;pi++) {
-      const spread = pc>1 ? (pi/(pc-1)-0.5)*0.25 : 0;
-      newProjs.push({id:uid(),x:cx,y:cy,targetId:tgt.id,dmg,diceType:d.type,dot:d.dot,level:d.level,color:def.border,speed:520,angleSpread:spread,tx:tgt.x,ty:tgt.y});
-    }
+    // N-dot: 최대 N개 타겟을 순환하며 1발씩 발사
+    const sorted = [...live].sort((a,b) => {
+      if (def.target==="first") return a.dist-b.dist;
+      if (def.target==="strongest") return b.hp-a.hp;
+      return 0;
+    });
+    const pool = sorted.slice(0, d.dot);
+    d.fireIdx = ((d.fireIdx||0) + 1) % pool.length;
+    const chosen = pool[d.fireIdx];
+    newProjs.push({id:uid(),x:cx,y:cy,targetId:chosen.id,dmg,diceType:d.type,dot:d.dot,level:d.level,color:def.border,speed:520,angleSpread:0,tx:chosen.x,ty:chosen.y});
   }
 
   const hitIds = new Set();
@@ -654,13 +670,19 @@ function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, 
 // ═══════════════════════════════════════════════════════════════
 function HUD({ p, pid, accent, onSummon, onLevelUp }) {
   const isDeath = p.wave>=7, isFury = p.wave>=11;
+  const canSummon = p.sp >= p.summonCost;
 
-  const typeMap = {};
-  for (const d of Object.values(p.dice)) {
-    if (!d) continue;
-    if (!typeMap[d.type] || d.level < typeMap[d.type].level) typeMap[d.type] = d;
-  }
-  const diceList = Object.values(typeMap);
+  // 항상 덱의 5개 타입 표시
+  const diceList = p.deck.map(type => {
+    const def = DICE_DEFS[type];
+    const onBoard = Object.values(p.dice).filter(d => d && d.type === type);
+    const upgradeable = onBoard.filter(d => d.level < 5);
+    const totalCost = upgradeable.reduce((s, d) => s + LV_COST[d.level-1], 0);
+    const minLevel = onBoard.length ? Math.min(...onBoard.map(d => d.level)) : 1;
+    const allMax = onBoard.length > 0 && upgradeable.length === 0;
+    const canUp = onBoard.length > 0 && upgradeable.length > 0 && p.sp >= totalCost;
+    return { type, def, onBoard: onBoard.length, minLevel, totalCost, allMax, canUp };
+  });
 
   return (
     <div style={{
@@ -682,17 +704,16 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
 
       <div style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 12px"}}>
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,flexShrink:0}}>
-          <button onClick={onSummon} disabled={p.sp<p.summonCost}
+          <button onClick={onSummon} disabled={!canSummon}
             style={{
               width:54,height:54,borderRadius:"50%",
-              background: p.sp>=p.summonCost
-                ? `radial-gradient(circle at 35% 35%, ${accent}bb, ${accent})`
-                : "#c8cce0",
-              border:`2.5px solid ${p.sp>=p.summonCost?accent+"88":"#bbb"}`,
-              color:"#fff",fontSize:24,cursor:p.sp>=p.summonCost?"pointer":"default",
-              boxShadow:p.sp>=p.summonCost?`0 3px 14px ${accent}66`:"none",
+              background: canSummon ? "#ffffff" : "#c8cce0",
+              border:`2.5px solid ${canSummon ? accent : "#bbb"}`,
+              color: canSummon ? accent : "#aaa",
+              fontSize:24, cursor: canSummon ? "pointer" : "default",
+              boxShadow: canSummon ? `0 3px 14px ${accent}44` : "none",
               display:"flex",alignItems:"center",justifyContent:"center",
-              padding:0,transition:"all .15s",
+              padding:0, transition:"all .15s",
             }}>🎲</button>
           <div style={{fontSize:9,color:"#667",textAlign:"center",lineHeight:1.3,fontWeight:"bold"}}>
             소환<br/>{p.summonCost}SP
@@ -700,34 +721,29 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
         </div>
 
         <div style={{display:"flex",gap:6,flexWrap:"wrap",flex:1,minHeight:74}}>
-          {diceList.length===0 && (
-            <div style={{fontSize:10,color:"#bbc",alignSelf:"center",padding:"0 4px"}}>주사위를 소환하세요</div>
-          )}
-          {diceList.map(d => {
-            const def = DICE_DEFS[d.type];
-            const cost = d.level < 5 ? LV_COST[d.level-1] : null;
-            const canUp = !!(cost && p.sp >= cost);
-            return (
-              <div key={d.type} onClick={()=>canUp && onLevelUp(d.type)}
-                style={{
-                  display:"flex",flexDirection:"column",alignItems:"center",gap:2,
-                  padding:"5px 6px 4px",
-                  background: canUp ? "#fff" : "#f0f2f8",
-                  border:`1.5px solid ${canUp ? def.border : "#dde"}`,
-                  borderRadius:10,
-                  cursor: canUp ? "pointer" : "default",
-                  boxShadow: canUp ? `0 2px 8px ${def.border}44` : "none",
-                  transition:"all .12s",
-                  minWidth:50,
-                }}>
-                <DiceSVG type={d.type} dot={d.dot} size={34}/>
-                <div style={{fontSize:9,fontWeight:700,color:"#334",lineHeight:1}}>Lv.{d.level}</div>
-                <div style={{fontSize:8,color:canUp?def.border:"#aab",fontWeight:"bold",lineHeight:1}}>
-                  {cost ? `${cost}SP` : "MAX"}
-                </div>
+          {diceList.map(({ type, def, onBoard, minLevel, totalCost, allMax, canUp }) => (
+            <div key={type} onClick={()=>canUp && onLevelUp(type)}
+              style={{
+                display:"flex",flexDirection:"column",alignItems:"center",gap:2,
+                padding:"5px 6px 4px",
+                background: canUp ? "#fff" : "#f0f2f8",
+                border:`1.5px solid ${canUp ? def.border : onBoard>0 ? "#ccd" : "#e8e8f0"}`,
+                borderRadius:10,
+                cursor: canUp ? "pointer" : "default",
+                boxShadow: canUp ? `0 2px 8px ${def.border}44` : "none",
+                opacity: onBoard > 0 ? 1 : 0.45,
+                transition:"all .12s",
+                minWidth:50,
+              }}>
+              <DiceSVG type={type} dot={Math.max(1, minLevel)} size={34}/>
+              <div style={{fontSize:9,fontWeight:700,color:"#334",lineHeight:1}}>
+                {onBoard > 0 ? `Lv.${minLevel}` : "없음"}
               </div>
-            );
-          })}
+              <div style={{fontSize:8,color:canUp?def.border:"#aab",fontWeight:"bold",lineHeight:1}}>
+                {onBoard===0 ? "-" : allMax ? "MAX" : `${totalCost}SP`}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -827,7 +843,7 @@ export default function App() {
     const onKill0 = (e) => {
       if (p1.dead) return;
       const t = Math.random()<0.15?"big":Math.random()<0.3?"speed":"normal";
-      const bonus = spawnEnemy({monType:t, hpMult:1+p0.wave*0.2, sm:1}, p0.wave);
+      const bonus = spawnEnemy(t, p0.gameTime, p0.wave);
       bonus.pathD = Math.random()*60;
       const pos = posOnPath(bonus.pathD);
       bonus.x = pos.x; bonus.y = pos.y;
@@ -836,7 +852,7 @@ export default function App() {
     const onKill1 = (e) => {
       if (p0.dead) return;
       const t = Math.random()<0.15?"big":Math.random()<0.3?"speed":"normal";
-      const bonus = spawnEnemy({monType:t, hpMult:1+p1.wave*0.2, sm:1}, p1.wave);
+      const bonus = spawnEnemy(t, p1.gameTime, p1.wave);
       bonus.pathD = Math.random()*60;
       const pos = posOnPath(bonus.pathD);
       bonus.x = pos.x; bonus.y = pos.y;
@@ -929,17 +945,16 @@ export default function App() {
 
   const handleLevelUp = useCallback((pid, diceType) => {
     const p = gsRef.current?.players[pid]; if (!p) return;
-    const entries = Object.entries(p.dice)
-      .filter(([,d])=>d && d.type===diceType)
-      .sort(([,a],[,b])=>a.level-b.level);
-    if (!entries.length) return;
-    const [, d] = entries[0];
-    if (d.level >= 5) return;
-    const cost = LV_COST[d.level-1];
-    if (p.sp < cost) return;
-    p.sp -= cost; d.level++;
-    const def=DICE_DEFS[d.type], ab=def.ability;
-    d.cdBase = (1/def.atkSpeed)*(ab.type==="atkSpeedBuff"?(1-ab.reductionPct/100):1);
+    const upgradeable = Object.values(p.dice).filter(d => d && d.type===diceType && d.level<5);
+    if (!upgradeable.length) return;
+    const totalCost = upgradeable.reduce((s, d) => s + LV_COST[d.level-1], 0);
+    if (p.sp < totalCost) return;
+    p.sp -= totalCost;
+    const def = DICE_DEFS[diceType], ab = def.ability;
+    for (const d of upgradeable) {
+      d.level++;
+      d.cdBase = (1/def.atkSpeed)*(ab.type==="atkSpeedBuff"?(1-ab.reductionPct/100):1);
+    }
     rerender();
   }, [rerender]);
 
