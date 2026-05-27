@@ -94,8 +94,8 @@ function DotLayer({ dot, color, size }) {
       {pos.map(([px, py], i) => (
         <circle key={i}
           cx={(px / 100) * size} cy={(py / 100) * size} r={r}
-          fill={color}
-          style={{ filter: `drop-shadow(0 ${size*0.012}px ${size*0.02}px rgba(0,0,0,0.4))` }}
+          fill="#222"
+          style={{ filter: `drop-shadow(0 ${size*0.012}px ${size*0.02}px rgba(0,0,0,0.25))` }}
         />
       ))}
     </>
@@ -146,9 +146,9 @@ function DiceFire({ size=60, dot=1 }) {
   return (
     <DiceCard size={S} border={b}>
       <path d={`M${S*.5},${S*.12} C${S*.5},${S*.12} ${S*.68},${S*.28} ${S*.66},${S*.42} C${S*.74},${S*.34} ${S*.76},${S*.22} ${S*.72},${S*.14} C${S*.82},${S*.26} ${S*.84},${S*.42} ${S*.78},${S*.54} C${S*.84},${S*.5} ${S*.86},${S*.4} ${S*.84},${S*.32} C${S*.9},${S*.44} ${S*.88},${S*.62} ${S*.78},${S*.7} C${S*.84},${S*.68} ${S*.86},${S*.6} ${S*.85},${S*.52} C${S*.9},${S*.64} ${S*.87},${S*.78} ${S*.76},${S*.84} C${S*.66},${S*.9} ${S*.58},${S*.88} ${S*.5},${S*.88} C${S*.42},${S*.88} ${S*.34},${S*.9} ${S*.24},${S*.84} C${S*.13},${S*.78} ${S*.1},${S*.64} ${S*.15},${S*.52} C${S*.14},${S*.6} ${S*.16},${S*.68} ${S*.22},${S*.7} C${S*.12},${S*.62} ${S*.1},${S*.44} ${S*.16},${S*.32} C${S*.15},${S*.4} ${S*.16},${S*.5} ${S*.22},${S*.54} C${S*.16},${S*.42} ${S*.18},${S*.26} ${S*.28},${S*.14} C${S*.24},${S*.22} ${S*.26},${S*.34} ${S*.34},${S*.42} C${S*.32},${S*.28} ${S*.5},${S*.12} Z`}
-        fill={b} opacity="0.62"/>
+        fill={b} opacity="0.22"/>
       <path d={`M${S*.5},${S*.18} C${S*.5},${S*.18} ${S*.62},${S*.3} ${S*.6},${S*.4} C${S*.66},${S*.34} ${S*.67},${S*.25} ${S*.65},${S*.2} C${S*.72},${S*.3} ${S*.72},${S*.42} ${S*.66},${S*.5} C${S*.7},${S*.48} ${S*.71},${S*.4} ${S*.7},${S*.34} C${S*.74},${S*.44} ${S*.72},${S*.58} ${S*.64},${S*.66} C${S*.68},${S*.64} ${S*.69},${S*.56} ${S*.68},${S*.5} C${S*.72},${S*.6} ${S*.69},${S*.72} ${S*.6},${S*.78} C${S*.54},${S*.82} ${S*.5},${S*.82} ${S*.46},${S*.82} C${S*.4},${S*.82} ${S*.36},${S*.82} ${S*.32},${S*.77} C${S*.26},${S*.7} ${S*.26},${S*.6} ${S*.3},${S*.5} C${S*.29},${S*.56} ${S*.3},${S*.64} ${S*.34},${S*.66} C${S*.26},${S*.58} ${S*.24},${S*.44} ${S*.28},${S*.34} C${S*.27},${S*.4} ${S*.28},${S*.48} ${S*.32},${S*.5} C${S*.26},${S*.42} ${S*.26},${S*.3} ${S*.34},${S*.2} C${S*.32},${S*.25} ${S*.32},${S*.34} ${S*.38},${S*.4} C${S*.36},${S*.3} ${S*.5},${S*.18} Z`}
-        fill={b} opacity="0.72"/>
+        fill={b} opacity="0.28"/>
       <DotLayer dot={dot} color={b} size={S}/>
     </DiceCard>
   );
@@ -323,14 +323,6 @@ function calcBaseHP(gameTime) {
   return 100 * (1 + Math.floor(gameTime / 10));
 }
 
-function buildWave(wave) {
-  const count = 6 + wave * 2;
-  return Array.from({length: count}, (_, i) => {
-    const t = Math.random() < 0.15 ? "big" : Math.random() < 0.3 ? "speed" : "normal";
-    return { monType: t, delay: i * 1.4 };
-  });
-}
-
 function spawnEnemy(monType, gameTime, wave) {
   const ms = MON_SPECS[monType];
   const base = calcBaseHP(gameTime);
@@ -355,10 +347,10 @@ function makePlayer(id, deck) {
   return {
     id, deck, sp: 100, summonCost: 10, hearts: 3,
     dice: {}, enemies: [], projs: [], effects: [],
-    wave: 0, waveActive: false,
-    spawnQueue: [], spawnTimer: 0, waveTimer: 5,
+    wave: 1,
     dead: false, score: 0,
     gameTime: 0, nextBossTime: 60,
+    normalTimer: 5, bigTimer: 10,
   };
 }
 
@@ -424,20 +416,18 @@ function tickPlayer(p, dt, onKill) {
     p.nextBossTime += 60;
   }
 
-  if (!p.waveActive) {
-    p.waveTimer -= dt;
-    if (p.waveTimer <= 0) {
-      p.wave++;
-      p.spawnQueue = buildWave(p.wave);
-      p.waveActive = true;
-      p.spawnTimer = 0;
-    }
+  p.wave = Math.floor(p.gameTime / 60) + 1;
+
+  p.normalTimer -= dt;
+  if (p.normalTimer <= 0) {
+    const t = Math.random() < 0.3 ? "speed" : "normal";
+    p.enemies.push(spawnEnemy(t, p.gameTime, p.wave));
+    p.normalTimer = 5;
   }
-  if (p.waveActive && p.spawnQueue.length) {
-    p.spawnTimer += dt;
-    while (p.spawnQueue.length && p.spawnTimer >= p.spawnQueue[0].delay) {
-      p.enemies.push(spawnEnemy(p.spawnQueue.shift().monType, p.gameTime, p.wave));
-    }
+  p.bigTimer -= dt;
+  if (p.bigTimer <= 0) {
+    p.enemies.push(spawnEnemy("big", p.gameTime, p.wave));
+    p.bigTimer = 10;
   }
 
   const toRemove = new Set();
@@ -471,11 +461,6 @@ function tickPlayer(p, dt, onKill) {
     e.dist = PATH_SEG.total - e.pathD;
   }
   p.enemies = p.enemies.filter(e => !toRemove.has(e.id));
-
-  if (p.waveActive && !p.spawnQueue.length && !p.enemies.length) {
-    p.waveActive = false;
-    p.waveTimer = 60;
-  }
 
   const newProjs = [];
   const dotSize = CELL - 12;
@@ -611,7 +596,7 @@ function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, 
             pointerEvents:"none", zIndex:15,
             filter: e.locked>0?"brightness(0.5)":e.slowStacks>0?"hue-rotate(180deg)":e.poison?"hue-rotate(80deg)":"none",
           }}>
-            {e.isBoss ? (
+            {e.isBoss && (
               <div style={{
                 ...anti,
                 position:"absolute", top:-14, left:"50%", transform:`translateX(-50%)${flipped?" scaleY(-1)":""}`,
@@ -624,13 +609,6 @@ function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, 
                   <div style={{fontSize:8,color:"#fff",fontWeight:"bold",lineHeight:1}}>{Math.ceil(e.hp).toLocaleString()}</div>
                 </div>
               </div>
-            ) : (
-              <div style={{
-                ...anti,
-                fontSize: sz<=22?8:10, fontWeight:"bold",
-                color:"#fff", textShadow:"0 1px 2px rgba(0,0,0,0.8)",
-                lineHeight:1, pointerEvents:"none",
-              }}>{dispHp && dispHp > 0 ? dispHp : ""}</div>
             )}
           </div>
         );
@@ -656,15 +634,6 @@ function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, 
         return null;
       })}
 
-      {/* 다음 웨이브 카운트다운 */}
-      {!p.waveActive && p.waveTimer>0 && (
-        <div style={{...anti,position:"absolute",bottom:6,left:"50%",
-          transform:`translateX(-50%)${flipped?" scaleY(-1)":""}`,
-          fontSize:11,color:"#667",background:"rgba(240,244,255,0.93)",
-          padding:"2px 10px",borderRadius:8,whiteSpace:"nowrap",border:"1px solid #DDE",pointerEvents:"none"}}>
-          웨이브 {p.wave+1} · {p.waveTimer.toFixed(1)}s
-        </div>
-      )}
 
       {p.dead && (
         <div style={{position:"absolute",inset:0,background:"rgba(255,50,50,0.2)",
@@ -707,7 +676,6 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
         <span style={{fontSize:13}}>{"❤️".repeat(p.hearts)}{"🖤".repeat(Math.max(0,3-p.hearts))}</span>
         {isFury&&<span style={{fontSize:9,color:"#f44",background:"#fff0f0",border:"1px solid #f44",borderRadius:4,padding:"1px 4px",fontWeight:"bold"}}>💀광폭</span>}
         {!isFury&&isDeath&&<span style={{fontSize:9,color:"#f80",background:"#fff8f0",border:"1px solid #f80",borderRadius:4,padding:"1px 4px",fontWeight:"bold"}}>⚡데스</span>}
-        <span style={{fontSize:10,color:"#99a",fontWeight:"bold"}}>W{p.wave}</span>
         <div style={{flex:1}}/>
         <span style={{fontSize:13,fontWeight:800,color:"#334"}}>💰 {Math.floor(p.sp)} SP</span>
         <span style={{fontSize:10,color:"#99a"}}>🏆{p.score.toLocaleString()}</span>
@@ -823,6 +791,11 @@ function GameOver({ winner, gs, onRestart }) {
       <button onClick={onRestart} style={{padding:"12px 40px",background:"linear-gradient(135deg,#3355EE,#1133BB)",border:"none",borderRadius:12,color:"#fff",fontSize:16,fontWeight:800,cursor:"pointer"}}>🔄 다시하기</button>
     </div>
   );
+}
+
+function formatTime(sec) {
+  const s = Math.max(0, Math.ceil(sec));
+  return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -974,6 +947,8 @@ export default function App() {
 
   const gs = gsRef.current; if (!gs) return null;
   const [p0, p1] = gs.players;
+  const bossTimeLeft = Math.max(0, p0.nextBossTime - p0.gameTime);
+  const waveNum = p0.wave;
 
   return (
     <div style={{
@@ -997,7 +972,11 @@ export default function App() {
         boardRef={el => boardRefs.current[1] = el}
       />
 
-      <div style={{width:"100%",maxWidth:BW,height:1,background:"rgba(0,0,0,0.08)"}}/>
+      <div style={{width:"100%",maxWidth:BW,display:"flex",alignItems:"center",justifyContent:"center",padding:"1px 0"}}>
+        <div style={{background:"#111",color:"#fff",padding:"4px 20px",borderRadius:10,fontSize:13,fontWeight:800,letterSpacing:1,boxShadow:"0 2px 8px rgba(0,0,0,0.3)"}}>
+          Wave {waveNum} · 보스까지 {formatTime(bossTimeLeft)}
+        </div>
+      </div>
 
       {/* P1 하단 */}
       <GameBoard p={p0} flipped={false}
