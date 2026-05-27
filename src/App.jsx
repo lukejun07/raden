@@ -42,33 +42,45 @@ function posOnPath(d) {
 //  DICE DEFINITIONS (일반 등급 9종)
 // ═══════════════════════════════════════════════════════════════
 const DICE_DEFS = {
-  fire:     { name:"불",     border:"#E02020", bg:"#F87070", target:"first",
+  // ── 일반 등급 ──
+  fire:        { name:"불",     border:"#E02020", bg:"#F87070", target:"first",
     ability:{ type:"splash", radius:CELL*1.8 },
     stats:{ dmg:{base:20,dP:3,lP:10}, atkInt:{base:0.8,dM:0.01,lM:0}, splashDmg:{base:20,dP:3,lP:20} } },
-  electric: { name:"전기",   border:"#C89000", bg:"#F5CF50", target:"first",
+  electric:    { name:"전기",   border:"#C89000", bg:"#F5CF50", target:"first",
     ability:{ type:"chain", count:3, ratios:[1.0,0.7,0.3] },
     stats:{ dmg:{base:30,dP:3,lP:10}, atkInt:{base:0.7,dM:0.02,lM:0}, chainDmg:{base:30,dP:3,lP:20} } },
-  poison:   { name:"독",     border:"#44AA00", bg:"#88DD44", target:"noPoison",
+  poison:      { name:"독",     border:"#44AA00", bg:"#88DD44", target:"noPoison",
     ability:{ type:"poison", tick:1.0 },
     stats:{ dmg:{base:20,dP:2,lP:10}, atkInt:{base:1.3,dM:0,lM:0}, dotDps:{base:50,dP:5,lP:25} } },
-  ice:      { name:"얼음",   border:"#0088EE", bg:"#55CCFF", target:"first",
+  ice:         { name:"얼음",   border:"#0088EE", bg:"#55CCFF", target:"first",
     ability:{ type:"slow", maxStacks:3 },
     stats:{ dmg:{base:30,dP:3,lP:30}, atkInt:{base:1.5,dM:0.02,lM:0}, slowPct:{base:5,dP:0.5,lP:2} } },
-  steel:    { name:"쇠",     border:"#666666", bg:"#AAAAAA", target:"strongest",
+  steel:       { name:"쇠",     border:"#666666", bg:"#AAAAAA", target:"strongest",
     ability:{ type:"bossKiller", mult:2.0 },
     stats:{ dmg:{base:100,dP:10,lP:100}, atkInt:{base:1.0,dM:0,lM:0} } },
-  broken:   { name:"고장난", border:"#AA44CC", bg:"#CC88EE", target:"random",
+  broken:      { name:"고장난", border:"#AA44CC", bg:"#CC88EE", target:"random",
     ability:{ type:"none" },
     stats:{ dmg:{base:50,dP:10,lP:50}, atkInt:{base:0.9,dM:0,lM:0} } },
-  gamble:   { name:"도박",   border:"#4422CC", bg:"#8866EE", target:"first",
+  gamble:      { name:"도박",   border:"#4422CC", bg:"#8866EE", target:"first",
     ability:{ type:"randomDmg" },
     stats:{ dmg:{base:7,dP:10,lP:77}, atkInt:{base:1.0,dM:0.01,lM:0} } },
-  lock:     { name:"잠금",   border:"#334488", bg:"#667799", target:"first",
+  lock:        { name:"잠금",   border:"#334488", bg:"#667799", target:"first",
     ability:{ type:"lock" },
     stats:{ dmg:{base:30,dP:5,lP:20}, atkInt:{base:0.8,dM:0.01,lM:0}, lockProb:{base:4,dP:1,lP:2}, lockDur:{base:3,dP:0.2,lP:0.5} } },
-  wind:     { name:"바람",   border:"#00AA88", bg:"#44DDBB", target:"first",
+  wind:        { name:"바람",   border:"#00AA88", bg:"#44DDBB", target:"first",
     ability:{ type:"windBuff" },
     stats:{ dmg:{base:20,dP:3,lP:15}, atkInt:{base:0.45,dM:0,lM:0}, speedBuff:{base:10,dP:2,lP:10} } },
+  // ── 희귀 등급 (spawnDot:3) ──
+  gamblegrowth:{ name:"도박성장", border:"#CC7700", bg:"#FFAA33", target:"first", spawnDot:3,
+    ability:{ type:"gamblegrowth" },
+    stats:{ dmg:{base:30,dP:0,lP:0}, atkInt:{base:1.0,dM:0,lM:0}, growthTime:{base:45,dM:1,lM:1} } },
+  // ── 전설 등급 (spawnDot:7) ──
+  joker:       { name:"조커",   border:"#880088", bg:"#DD44CC", target:"first", spawnDot:7,
+    ability:{ type:"joker" },
+    stats:{ dmg:{base:40,dP:5,lP:10}, atkInt:{base:1.5,dM:0,lM:0} } },
+  growth:      { name:"성장",   border:"#228800", bg:"#66CC33", target:"first", spawnDot:7,
+    ability:{ type:"growth" },
+    stats:{ dmg:{base:10,dP:5,lP:10}, atkInt:{base:2.0,dM:0,lM:0}, growthTime:{base:15,dM:1,lM:0} } },
 };
 const DICE_KEYS = Object.keys(DICE_DEFS);
 const LV_COST = [100, 200, 400, 700];
@@ -309,7 +321,51 @@ function DiceWind({ size=60, dot=1 }) {
   );
 }
 
-const DICE_SVG = { fire:DiceFire, electric:DiceElectric, poison:DicePoison, ice:DiceIce, steel:DiceSteel, broken:DiceBroken, gamble:DiceGamble, lock:DiceLock, wind:DiceWind };
+function DiceGambleGrowth({ size=60, dot=1 }) {
+  const S=size, b=DICE_DEFS.gamblegrowth.border;
+  return (
+    <DiceCard size={S} border={b}>
+      {[[S*.25,S*.3],[S*.75,S*.3],[S*.25,S*.7],[S*.75,S*.7]].map(([x,y],i)=>(
+        <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle"
+          fontSize={S*.18} fontWeight="900" fill={b} opacity="0.52"
+          style={{fontFamily:"Arial Black,Arial,sans-serif"}}>?</text>
+      ))}
+      <path d={`M${S*.5},${S*.14} L${S*.5},${S*.56} M${S*.36},${S*.28} L${S*.5},${S*.14} L${S*.64},${S*.28}`}
+        fill="none" stroke={b} strokeWidth={S*.052} strokeLinecap="round" strokeLinejoin="round" opacity="0.7"/>
+      <DotLayer dot={dot} color={b} size={S}/>
+    </DiceCard>
+  );
+}
+
+function DiceJoker({ size=60, dot=1 }) {
+  const S=size, b=DICE_DEFS.joker.border;
+  return (
+    <DiceCard size={S} border={b}>
+      <path d={`M${S*.5},${S*.1} L${S*.74},${S*.46} L${S*.5},${S*.7} L${S*.26},${S*.46} Z`} fill={b} opacity="0.25"/>
+      <text x={S*.5} y={S*.46} textAnchor="middle" dominantBaseline="middle"
+        fontSize={S*.3} fontWeight="900" fill={b} opacity="0.65"
+        style={{fontFamily:"Arial Black,Arial,sans-serif"}}>J</text>
+      <DotLayer dot={dot} color={b} size={S}/>
+    </DiceCard>
+  );
+}
+
+function DiceGrowth({ size=60, dot=1 }) {
+  const S=size, b=DICE_DEFS.growth.border;
+  const bars=[[S*.15,S*.76,S*.15,S*.18],[S*.38,S*.76,S*.15,S*.34],[S*.61,S*.76,S*.15,S*.5]];
+  return (
+    <DiceCard size={S} border={b}>
+      {bars.map(([x,y,w,h],i)=>(
+        <rect key={i} x={x} y={y-h} width={w} height={h} rx={S*.02} fill={b} opacity={0.3+i*.12}/>
+      ))}
+      <path d={`M${S*.5},${S*.09} L${S*.5},${S*.52} M${S*.34},${S*.24} L${S*.5},${S*.09} L${S*.66},${S*.24}`}
+        fill="none" stroke={b} strokeWidth={S*.048} strokeLinecap="round" strokeLinejoin="round" opacity="0.62"/>
+      <DotLayer dot={dot} color={b} size={S}/>
+    </DiceCard>
+  );
+}
+
+const DICE_SVG = { fire:DiceFire, electric:DiceElectric, poison:DicePoison, ice:DiceIce, steel:DiceSteel, broken:DiceBroken, gamble:DiceGamble, lock:DiceLock, wind:DiceWind, gamblegrowth:DiceGambleGrowth, joker:DiceJoker, growth:DiceGrowth };
 function DiceSVG({ type, dot=1, size=56 }) {
   const C = DICE_SVG[type]; return C ? <C size={size} dot={dot}/> : null;
 }
@@ -336,10 +392,10 @@ function getStat(s, dot, level) {
   return s.base + (dot-1)*(s.dP||0) - (dot-1)*(s.dM||0)
                + (level-1)*(s.lP||0) - (level-1)*(s.lM||0);
 }
-function getSelfSpeedBuff(d) {
+function getSelfSpeedBuff(d, level) {
   const def = DICE_DEFS[d.type];
   if (!def.stats.speedBuff) return 0;
-  return Math.min(getStat(def.stats.speedBuff, d.dot, d.level) / 100, 0.95);
+  return Math.min(getStat(def.stats.speedBuff, d.dot, level) / 100, 0.95);
 }
 
 function monSPReward(monType, wave) {
@@ -380,11 +436,19 @@ function makePlayer(id, deck) {
     dead: false,
     gameTime: 0, nextBossTime: 60,
     normalTimer: 5, bigTimer: 10, normalKillCount: 0,
+    diceLevels: {},  // 종류별 전역 레벨: { fire:1, electric:2, ... }
   };
 }
 
-function makeDice(type, dot = 1) {
-  return { id: uid(), type, dot, level: 1, cd: 0 };
+function makeDice(type, dot, level) {
+  const def = DICE_DEFS[type];
+  const startDot = (dot !== undefined) ? dot : (def.spawnDot || 1);
+  const lvl = level || 1;
+  const d = { id: uid(), type, dot: startDot, level: 1, cd: 0, subIdx: 0 };
+  if (def.stats.growthTime) {
+    d.growthTimer = getStat(def.stats.growthTime, startDot, lvl);
+  }
+  return d;
 }
 
 function pickTarget(enemies, mode) {
@@ -522,9 +586,10 @@ function tickPlayer(p, dt, onKill) {
     const {x:cx, y:cy} = cellXY(...key.split(",").map(Number));
     const live = p.enemies.filter(e=>e.hp>0); if (!live.length) continue;
 
-    d.subIdx = ((d.subIdx||0)) % d.dot;
-    const atkInt = getStat(def.stats.atkInt, d.dot, d.level);
-    const selfBuff = getSelfSpeedBuff(d);
+    const lv = p.diceLevels[d.type] || 1;
+    d.subIdx = (d.subIdx||0) % d.dot;
+    const atkInt = getStat(def.stats.atkInt, d.dot, lv);
+    const selfBuff = getSelfSpeedBuff(d, lv);
     d.cd = atkInt * (1 - selfBuff) / d.dot;
 
     const dotPositions = DOT_LAYOUTS[d.dot];
@@ -533,7 +598,7 @@ function tickPlayer(p, dt, onKill) {
     const gunX = cx + (px/100 - 0.5) * dotSize;
     const gunY = cy + (py/100 - 0.5) * dotSize;
 
-    const dmg = getStat(def.stats.dmg, d.dot, d.level);
+    const dmg = getStat(def.stats.dmg, d.dot, lv);
     let tgt;
     if (def.target === "random") {
       tgt = live[Math.floor(Math.random() * live.length)];
@@ -546,7 +611,7 @@ function tickPlayer(p, dt, onKill) {
     } else {
       tgt = live.reduce((a,b) => a.dist < b.dist ? a : b);
     }
-    newProjs.push({id:uid(),x:gunX,y:gunY,targetId:tgt.id,dmg,diceType:d.type,dot:d.dot,level:d.level,color:def.border,speed:520,angleSpread:0,tx:tgt.x,ty:tgt.y});
+    newProjs.push({id:uid(),x:gunX,y:gunY,targetId:tgt.id,dmg,diceType:d.type,dot:d.dot,level:lv,color:def.border,speed:520,angleSpread:0,tx:tgt.x,ty:tgt.y});
     d.subIdx = (d.subIdx + 1) % d.dot;
   }
 
@@ -563,6 +628,27 @@ function tickPlayer(p, dt, onKill) {
   // newProjs are NOT moved this tick so they render at the exact gun position first
   p.projs = [...p.projs.filter(pr=>!hitIds.has(pr.id)), ...newProjs];
 
+  // 성장/도박성장 타이머
+  for (const [key, d] of Object.entries(p.dice)) {
+    if (!d) continue;
+    const def = DICE_DEFS[d.type];
+    const ab = def.ability.type;
+    if (ab !== "gamblegrowth" && ab !== "growth") continue;
+    if (d.growthTimer === undefined) d.growthTimer = getStat(def.stats.growthTime, d.dot, p.diceLevels[d.type]||1);
+    d.growthTimer -= dt;
+    if (d.growthTimer <= 0) {
+      if (ab === "gamblegrowth") {
+        const newType = rnd(p.deck);
+        const newDot = Math.floor(Math.random() * 7) + 1;
+        p.dice[key] = makeDice(newType, newDot, p.diceLevels[newType]||1);
+      } else {
+        const newDot = Math.min(d.dot + 1, 7);
+        const newType = rnd(p.deck);
+        p.dice[key] = makeDice(newType, newDot, p.diceLevels[newType]||1);
+      }
+    }
+  }
+
   p.effects = p.effects
     .map(ef => ({...ef, life:ef.life-dt, x:ef.x+(ef.vx||0)*dt, y:ef.y+(ef.vy||0)*dt}))
     .filter(ef => ef.life > 0);
@@ -576,7 +662,8 @@ function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, 
 
   const onPD = (e, key) => {
     const d = p.dice[key];
-    if (!d || d.dot === 7) return;
+    if (!d) return;
+    if (d.dot === 7 && d.type !== "joker") return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     onDragStart(p.id, key, e.clientX, e.clientY);
@@ -606,7 +693,10 @@ function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, 
       {Array.from({length:ROWS},(_,r) => Array.from({length:COLS},(_,c) => {
         const key = cellKey(c,r), d = p.dice[key];
         const isSrc = key === srcKey;
-        const canDrop = !!(srcDice && d && !isSrc && d.dot<7 && srcDice.type===d.type && srcDice.dot===d.dot);
+        const isJokerMerge = !!(srcDice && d && !isSrc && srcDice.dot===d.dot &&
+          ((srcDice.type==="joker" && d.type!=="joker") || (srcDice.type!=="joker" && d.type==="joker")));
+        const isNormalMerge = !!(srcDice && d && !isSrc && srcDice.dot<7 && d.dot<7 && srcDice.type===d.type && srcDice.dot===d.dot);
+        const canDrop = isJokerMerge || isNormalMerge;
         return (
           <div key={key}
             onPointerDown={d ? e=>onPD(e,key) : undefined}
@@ -627,9 +717,13 @@ function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, 
               transition:"box-shadow .1s,border .1s",
             }}>
             {d && (
-              <div style={{...anti,display:"flex",flexDirection:"column",alignItems:"center",gap:1,pointerEvents:"none"}}>
+              <div style={{...anti,position:"relative",display:"flex",flexDirection:"column",alignItems:"center",gap:1,pointerEvents:"none"}}>
                 <DiceSVG type={d.type} dot={d.dot} size={CELL-12}/>
-                {d.level>1 && <div style={{fontSize:8,fontWeight:"bold",color:"#fff",background:"rgba(0,0,0,0.45)",borderRadius:3,padding:"0 3px",lineHeight:"13px"}}>Lv{d.level}</div>}
+                {d.growthTimer !== undefined && (
+                  <div style={{position:"absolute",bottom:0,right:0,fontSize:7,fontWeight:"bold",color:"#fff",background:"rgba(0,0,0,0.58)",borderRadius:3,padding:"0 2px",lineHeight:"12px"}}>
+                    {Math.ceil(d.growthTimer)}s
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -714,16 +808,14 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
   const isDeath = p.wave>=7, isFury = p.wave>=11;
   const canSummon = p.sp >= p.summonCost;
 
-  // 항상 덱의 5개 타입 표시
   const diceList = p.deck.map(type => {
     const def = DICE_DEFS[type];
-    const onBoard = Object.values(p.dice).filter(d => d && d.type === type);
-    const upgradeable = onBoard.filter(d => d.level < 5);
-    const minLevel = onBoard.length ? Math.min(...onBoard.map(d => d.level)) : 1;
-    const fixedCost = upgradeable.length > 0 ? LV_COST[upgradeable[0].level - 1] : 0;
-    const allMax = onBoard.length > 0 && upgradeable.length === 0;
-    const canUp = onBoard.length > 0 && upgradeable.length > 0 && p.sp >= fixedCost;
-    return { type, def, onBoard: onBoard.length, minLevel, fixedCost, allMax, canUp };
+    const onBoard = Object.values(p.dice).filter(d => d && d.type === type).length;
+    const curLevel = p.diceLevels[type] || 1;
+    const allMax = curLevel >= 5;
+    const cost = allMax ? 0 : LV_COST[curLevel - 1];
+    const canUp = onBoard > 0 && !allMax && p.sp >= cost;
+    return { type, def, onBoard, curLevel, allMax, cost, canUp };
   });
 
   return (
@@ -761,7 +853,7 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
         </div>
 
         <div style={{display:"flex",gap:6,flexWrap:"wrap",flex:1,minHeight:74}}>
-          {diceList.map(({ type, def, onBoard, minLevel, fixedCost, allMax, canUp }) => (
+          {diceList.map(({ type, def, onBoard, curLevel, allMax, cost, canUp }) => (
             <div key={type} onClick={()=>canUp && onLevelUp(type)}
               style={{
                 display:"flex",flexDirection:"column",alignItems:"center",gap:2,
@@ -775,12 +867,12 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
                 transition:"all .12s",
                 minWidth:50,
               }}>
-              <DiceSVG type={type} dot={Math.max(1, minLevel)} size={34}/>
+              <DiceSVG type={type} dot={def.spawnDot||1} size={34}/>
               <div style={{fontSize:9,fontWeight:700,color:"#334",lineHeight:1}}>
-                {onBoard > 0 ? `Lv.${minLevel}` : "없음"}
+                {onBoard > 0 ? `Lv.${curLevel}` : "없음"}
               </div>
               <div style={{fontSize:8,color:canUp?def.border:"#aab",fontWeight:"bold",lineHeight:1}}>
-                {onBoard===0 ? "-" : allMax ? "MAX" : `${fixedCost}SP`}
+                {onBoard===0 ? "-" : allMax ? "MAX" : `${cost}SP`}
               </div>
             </div>
           ))}
@@ -805,7 +897,7 @@ function DeckPanel({ label, deck, setDeck, accent }) {
         const d=DICE_DEFS[k]; const sel=deck.includes(k);
         return (
           <div key={k} onClick={()=>toggle(k)} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",marginBottom:4,background:sel?`${d.border}14`:"#F8F9FF",border:sel?`1.5px solid ${d.border}`:"1.5px solid #E8ECF8",borderRadius:9,cursor:"pointer",transition:"all .12s"}}>
-            <DiceSVG type={k} dot={3} size={42}/>
+            <DiceSVG type={k} dot={d.spawnDot||3} size={42}/>
             <div style={{flex:1}}>
               <div style={{fontSize:12,fontWeight:sel?800:500,color:sel?d.border:"#334"}}>{d.name}</div>
               <div style={{fontSize:10,color:"#999"}}>{d.ability.type}</div>
@@ -919,7 +1011,8 @@ export default function App() {
     const empties = [];
     for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) { const k=cellKey(c,r); if(!p.dice[k]) empties.push(k); }
     if (!empties.length) return;
-    p.dice[rnd(empties)] = makeDice(rnd(p.deck));
+    const type = rnd(p.deck);
+    p.dice[rnd(empties)] = makeDice(type, undefined, p.diceLevels[type]||1);
     p.sp -= p.summonCost; p.summonCost += 10;
     rerender();
   }, [rerender]);
@@ -928,11 +1021,27 @@ export default function App() {
     if (srcKey === targetKey) return;
     const p = gsRef.current?.players[pid]; if (!p) return;
     const src = p.dice[srcKey], tgt = p.dice[targetKey];
-    if (!src || !tgt) return;
-    if (src.type === tgt.type && src.dot === tgt.dot && src.dot < 7) {
-      const newType = rnd(p.deck);
+    if (!src || !tgt || src.dot !== tgt.dot) return;
+
+    const srcJoker = src.type === "joker", tgtJoker = tgt.type === "joker";
+    if (srcJoker && !tgtJoker) {
+      // 조커가 대상 종류로 변신, 대상 제거
+      const lv = p.diceLevels[tgt.type] || 1;
+      p.dice[srcKey] = makeDice(tgt.type, src.dot, lv);
+      delete p.dice[targetKey];
+      rerender();
+    } else if (!srcJoker && tgtJoker) {
+      // 조커(tgt)가 src 종류로 변신, src 제거
+      const lv = p.diceLevels[src.type] || 1;
+      p.dice[targetKey] = makeDice(src.type, tgt.dot, lv);
       delete p.dice[srcKey];
-      p.dice[targetKey] = makeDice(newType, src.dot + 1);
+      rerender();
+    } else if (src.type === tgt.type && src.dot < 7) {
+      // 일반 합성
+      const newType = rnd(p.deck);
+      const lv = p.diceLevels[newType] || 1;
+      delete p.dice[srcKey];
+      p.dice[targetKey] = makeDice(newType, src.dot + 1, lv);
       rerender();
     }
   }, [rerender]);
@@ -981,12 +1090,14 @@ export default function App() {
 
   const handleLevelUp = useCallback((pid, diceType) => {
     const p = gsRef.current?.players[pid]; if (!p) return;
-    const upgradeable = Object.values(p.dice).filter(d => d && d.type===diceType && d.level<5);
-    if (!upgradeable.length) return;
-    const cost = LV_COST[upgradeable[0].level - 1]; // 개수 무관 고정 비용
+    const onBoard = Object.values(p.dice).filter(d => d && d.type===diceType).length;
+    if (!onBoard) return;
+    const curLevel = p.diceLevels[diceType] || 1;
+    if (curLevel >= 5) return;
+    const cost = LV_COST[curLevel - 1];
     if (p.sp < cost) return;
     p.sp -= cost;
-    for (const d of upgradeable) d.level++;
+    p.diceLevels[diceType] = curLevel + 1;
     rerender();
   }, [rerender]);
 
