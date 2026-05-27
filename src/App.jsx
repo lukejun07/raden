@@ -87,9 +87,15 @@ const DICE_DEFS = {
     ability:{ type:"lightAura" },
     stats:{ atkInt:{base:9999} } },
   // ── 전설 등급 (추가) ──
-  sun:         { name:"태양",   border:"#DD5500", bg:"#FFB833", target:"first", minClass:7,
-    ability:{ type:"sun", splashRadius:CELL*1.5 },
+  sun:         { name:"태양",   border:"#886633", bg:"#DDAA66", target:"first", minClass:7,
+    ability:{ type:"sun", splashRadius:CELL*0.9 },
     stats:{ dmg:{base:40,cP:5,lP:11}, atkInt:{base:1.2,cM:0,lM:0}, splashDmg:{base:40,cP:5,lP:11} } },
+  combo:       { name:"콤보",   border:"#CC1188", bg:"#FFDDEE", target:"first", minClass:7,
+    ability:{ type:"combo" },
+    stats:{ dmg:{base:50,cP:10,lP:10}, atkInt:{base:1.2,cM:0,lM:0}, comboDmg:{base:8,cP:2,lP:1} } },
+  moon:        { name:"달",     border:"#888888", bg:"#DDDDDD", target:"none", minClass:7,
+    ability:{ type:"moonAura" },
+    stats:{ atkInt:{base:9999} } },
 };
 const DICE_KEYS = Object.keys(DICE_DEFS);
 const LV_COST = [100, 200, 400, 700];
@@ -417,8 +423,8 @@ function DiceLight({ size=60, dot=1 }) {
   );
 }
 
-function DiceSun({ size=60, dot=1 }) {
-  const S=size, b="#DD5500";
+function DiceSun({ size=60, dot=1, active=false }) {
+  const S=size, b=active?"#DD5500":"#886633";
   const cx=S*.5, cy=S*.5;
   const pts=[];
   for(let i=0;i<12;i++){
@@ -436,9 +442,69 @@ function DiceSun({ size=60, dot=1 }) {
   );
 }
 
-const DICE_SVG = { fire:DiceFire, electric:DiceElectric, poison:DicePoison, ice:DiceIce, steel:DiceSteel, broken:DiceBroken, gamble:DiceGamble, lock:DiceLock, wind:DiceWind, gamblegrowth:DiceGambleGrowth, joker:DiceJoker, growth:DiceGrowth, light:DiceLight, sun:DiceSun };
-function DiceSVG({ type, dot=1, size=56 }) {
-  const C = DICE_SVG[type]; return C ? <C size={size} dot={dot}/> : null;
+function DiceCombo({ size=60, dot=1, comboCount=0 }) {
+  const S=size, b="#CC1188";
+  const fs = comboCount > 999?S*.13:comboCount>99?S*.17:comboCount>9?S*.22:S*.28;
+  return (
+    <DiceCard size={S} border={b}>
+      <text x={S*.5} y={S*.41} textAnchor="middle" dominantBaseline="middle"
+        fontSize={fs} fontWeight="900" fill={b} opacity="0.82"
+        style={{fontFamily:"Arial Black,Arial,sans-serif"}}>{comboCount}</text>
+      <DotLayer dot={dot} color={b} size={S}/>
+    </DiceCard>
+  );
+}
+
+function DiceMoon({ size=60, dot=1, active=false }) {
+  const S=size;
+  const uidRef = useRef(`mn${_dcCtr++}`).current;
+  const b = active ? "#44AADD" : "#888888";
+  const cx=S*.5, cy=S*.5, rx=S*.2, pad=S*.1;
+  const phase = dot<=3?"crescent":dot<=5?"half":"full";
+  return (
+    <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
+      <defs>
+        <linearGradient id={`imn_${uidRef}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FFFFFF"/>
+          <stop offset="100%" stopColor={active?"#DDEEFF":"#F0F0F0"}/>
+        </linearGradient>
+        <linearGradient id={`gmn_${uidRef}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"   stopColor="white" stopOpacity="0.0"/>
+          <stop offset="35%"  stopColor="white" stopOpacity="0.7"/>
+          <stop offset="52%"  stopColor="white" stopOpacity="0.7"/>
+          <stop offset="100%" stopColor="white" stopOpacity="0.0"/>
+        </linearGradient>
+        <filter id={`fmn_${uidRef}`} x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy={S*.025} stdDeviation={S*.04} floodColor="rgba(0,0,0,0.28)"/>
+        </filter>
+        <clipPath id={`cmn_${uidRef}`}>
+          <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*.65}/>
+        </clipPath>
+        {phase==="half" && (
+          <clipPath id={`hmn_${uidRef}`}>
+            <rect x={pad} y={pad} width={S*.5-pad} height={S-pad*2}/>
+          </clipPath>
+        )}
+      </defs>
+      <rect x="1" y="1" width={S-2} height={S-2} rx={rx} fill={b} filter={`url(#fmn_${uidRef})`}/>
+      <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*.65} fill={`url(#imn_${uidRef})`}/>
+      <g clipPath={`url(#cmn_${uidRef})`}>
+        {phase==="full" && <circle cx={cx} cy={cy} r={S*.28} fill={b} opacity="0.72"/>}
+        {phase==="half" && <circle cx={cx} cy={cy} r={S*.28} fill={b} opacity="0.72" clipPath={`url(#hmn_${uidRef})`}/>}
+        {phase==="crescent" && <>
+          <circle cx={cx} cy={cy} r={S*.28} fill={b} opacity="0.72"/>
+          <circle cx={cx+S*.17} cy={cy-S*.02} r={S*.25} fill="rgba(255,255,255,0.96)"/>
+        </>}
+        <DotLayer dot={dot} color={b} size={S}/>
+      </g>
+      <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*.65} fill={`url(#gmn_${uidRef})`}/>
+    </svg>
+  );
+}
+
+const DICE_SVG = { fire:DiceFire, electric:DiceElectric, poison:DicePoison, ice:DiceIce, steel:DiceSteel, broken:DiceBroken, gamble:DiceGamble, lock:DiceLock, wind:DiceWind, gamblegrowth:DiceGambleGrowth, joker:DiceJoker, growth:DiceGrowth, light:DiceLight, sun:DiceSun, combo:DiceCombo, moon:DiceMoon };
+function DiceSVG({ type, dot=1, size=56, active=false, comboCount=0 }) {
+  const C = DICE_SVG[type]; return C ? <C size={size} dot={dot} active={active} comboCount={comboCount}/> : null;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -512,6 +578,7 @@ function makePlayer(id, deck, rawClassLevels = {}) {
     gameTime: 0, nextBossTime: 80,
     normalTimer: 10, bigTimer: 20, normalKillCount: 0,
     bossRound: false,
+    comboCount: 0,    // 콤보주사위 합성 카운트
     diceLevels: {},   // 인게임 파워업 레벨 { type: 1~5 }
     classLevels,      // 덱 빌더에서 설정한 클래스 레벨 { type: number }
   };
@@ -555,8 +622,11 @@ function applyHit(p, proj, tgt) {
   if (ab.type === "randomDmg") {
     dmg = proj.dmg + Math.random() * proj.dmg; // [1x, 2x] 크리티컬 데미지까지
   } else {
-    if (Math.random() < 0.05) { dmg *= 2.0; spawnFx(p,"burst",tgt.x,tgt.y,"#FFD700"); }
+    const critChance = 0.05 + (proj.moonActivated ? 0.05 : 0);
+    if (Math.random() < critChance) { dmg *= 2.0; spawnFx(p,"burst",tgt.x,tgt.y,"#FFD700"); }
   }
+  // 달 활성화: 공격력 +10%
+  if (proj.moonActivated) dmg *= 1.10;
   // 태양 체인 데미지 배율
   if (ab.type === "sun") {
     const sunDice = p.dice[proj.diceKey];
@@ -608,7 +678,9 @@ function applyHit(p, proj, tgt) {
       spawnFx(p,"lock",tgt.x,tgt.y,"#8090FF");
     }
   }
-  const hitColor = def.border === "#RAINBOW" ? "#FF88DD" : def.border;
+  const hitColor = def.border === "#RAINBOW" ? "#FF88DD"
+    : (proj.diceType==="sun" && (proj.sunCount||0)>=3 && (proj.sunCount%2)===1) ? "#DD5500"
+    : def.border;
   spawnFx(p,"hit",tgt.x,tgt.y,hitColor);
   spawnTxt(p,tgt.x,tgt.y,Math.round(dmg));
 }
@@ -691,9 +763,25 @@ function tickPlayer(p, dt, onKill) {
       lightBuffMap[nk] = Math.max(lightBuffMap[nk]||0, lbPct);
     }
   }
-  // 태양 활성화 계산 (3,5,7,9개일 때)
-  const sunCount = Object.values(p.dice).filter(d=>d?.type==="sun").length;
-  const sunActivated = sunCount >= 3 && sunCount % 2 === 1;
+  // 태양/달 활성화 계산 (3,5,7,9개일 때)
+  const sunCount  = Object.values(p.dice).filter(d=>d?.type==="sun").length;
+  const sunActivated  = sunCount  >= 3 && sunCount  % 2 === 1;
+  const moonCount = Object.values(p.dice).filter(d=>d?.type==="moon").length;
+  const moonActivated = moonCount >= 3 && moonCount % 2 === 1;
+  // 달 아우라 버프 맵 (십자 인접, 공격속도)
+  const moonBuffMap = {};
+  for (const [mk, md] of Object.entries(p.dice)) {
+    if (!md || md.type !== "moon") continue;
+    const mlv  = p.diceLevels["moon"] || 1;
+    const mclv = (p.classLevels?.["moon"]) || (DICE_DEFS.moon.minClass||7);
+    const mbPct = md.dot * (7 + (mclv-1)*1) + (mlv-1)*2;
+    const [mc, mr] = mk.split(",").map(Number);
+    for (const [nc, nr] of [[mc-1,mr],[mc+1,mr],[mc,mr-1],[mc,mr+1]]) {
+      if (nc<0||nc>=COLS||nr<0||nr>=ROWS) continue;
+      const nk = cellKey(nc, nr);
+      moonBuffMap[nk] = Math.max(moonBuffMap[nk]||0, mbPct);
+    }
+  }
 
   const newProjs = [];
   const dotSize = CELL - 12;
@@ -701,8 +789,8 @@ function tickPlayer(p, dt, onKill) {
     if (!d) continue;
     d.cd -= dt; if (d.cd > 0) continue;
     const def = DICE_DEFS[d.type];
-    // 빛 주사위: 공격 없음, CD만 리셋
-    if (def.ability.type === "lightAura") { d.cd = 1.0; continue; }
+    // 빛/달 주사위: 공격 없음, CD만 리셋
+    if (def.ability.type === "lightAura" || def.ability.type === "moonAura") { d.cd = 1.0; continue; }
     const {x:cx, y:cy} = cellXY(...key.split(",").map(Number));
     const live = p.enemies.filter(e=>e.hp>0); if (!live.length) continue;
 
@@ -711,14 +799,21 @@ function tickPlayer(p, dt, onKill) {
     d.subIdx = (d.subIdx||0) % d.dot;
     let atkInt = getStat(def.stats.atkInt, clv, lv);
     if (d.type === "sun" && sunActivated) atkInt = 0.4;
-    const selfBuff = getSelfSpeedBuff(d, clv, lv);
+    const selfBuff  = getSelfSpeedBuff(d, clv, lv);
     const lightBuff = Math.min((lightBuffMap[key]||0) / 100, 0.95);
-    const totalBuff = Math.min(selfBuff + lightBuff, 0.95);
+    const moonBuff  = Math.min((moonBuffMap[key]||0) / 100, 0.95);
+    const totalBuff = Math.min(selfBuff + lightBuff + moonBuff, 0.95);
 
     const dotPositions = DOT_LAYOUTS[d.dot];
     if (!dotPositions) continue;
 
-    const dmg = getStat(def.stats.dmg, clv, lv);
+    let dmg = getStat(def.stats.dmg, clv, lv);
+    // 콤보 주사위: 이차함수 데미지
+    if (d.type === "combo") {
+      const cpd = getStat(def.stats.comboDmg, clv, lv);
+      const cc = p.comboCount || 0;
+      dmg += cpd * cc * (cc + 1) / 2;
+    }
     let tgt;
     if (def.target === "random") {
       tgt = live[Math.floor(Math.random() * live.length)];
@@ -731,10 +826,13 @@ function tickPlayer(p, dt, onKill) {
     } else {
       tgt = live.reduce((a,b) => a.dist < b.dist ? a : b);
     }
-    const projColor = def.border === "#RAINBOW" ? `hsl(${(Date.now()/10)%360},100%,50%)` : def.border;
-    const projBase = {diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:1560,tx:tgt.x,ty:tgt.y,diceKey:key,sunCount};
+    const projColor = def.border === "#RAINBOW" ? `hsl(${(Date.now()/10)%360},100%,50%)`
+      : (d.type==="sun" && sunActivated) ? "#DD5500"
+      : def.border;
+    const projBase = {diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:1560,tx:tgt.x,ty:tgt.y,diceKey:key,sunCount,moonActivated};
 
     d.cd = atkInt * (1 - totalBuff) / d.dot;
+    if (moonActivated) d.cd /= 1.03; // 달 활성화 추가 공속 +3%
     let gunX, gunY;
     if (dotPositions === "star") {
       gunX = cx; gunY = cy;
@@ -792,6 +890,10 @@ function tickPlayer(p, dt, onKill) {
 // ═══════════════════════════════════════════════════════════════
 function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, boardRef }) {
   const anti = flipped ? {transform:"scaleY(-1)"} : {};
+  const moonCnt = Object.values(p.dice).filter(d=>d?.type==="moon").length;
+  const moonOn  = moonCnt >= 3 && moonCnt % 2 === 1;
+  const sunCnt  = Object.values(p.dice).filter(d=>d?.type==="sun").length;
+  const sunOn   = sunCnt  >= 3 && sunCnt  % 2 === 1;
 
   const onPD = (e, key) => {
     const d = p.dice[key];
@@ -851,7 +953,10 @@ function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, 
             }}>
             {d && (
               <div style={{...anti,position:"relative",display:"flex",flexDirection:"column",alignItems:"center",gap:1,pointerEvents:"none"}}>
-                <DiceSVG type={d.type} dot={d.dot} size={CELL-12}/>
+                <DiceSVG type={d.type} dot={d.dot} size={CELL-12}
+                  active={(d.type==="moon"&&moonOn)||(d.type==="sun"&&sunOn)}
+                  comboCount={d.type==="combo"?(p.comboCount||0):0}
+                />
                 {d.growthTimer !== undefined && (
                   <div style={{position:"absolute",bottom:0,right:0,fontSize:7,fontWeight:"bold",color:"#fff",background:"rgba(0,0,0,0.58)",borderRadius:3,padding:"0 2px",lineHeight:"12px"}}>
                     {Math.ceil(d.growthTimer)}s
@@ -1198,21 +1303,23 @@ export default function App() {
 
     const srcJoker = src.type === "joker", tgtJoker = tgt.type === "joker";
     const cl = p.classLevels || {};
+    let merged = false;
     if (srcJoker && !tgtJoker) {
       // 조커(src)가 대상 종류로 복사 변신, 대상은 그대로
       p.dice[srcKey] = makeDice(tgt.type, src.dot, p.diceLevels[tgt.type]||1, cl[tgt.type]||1);
-      rerender();
+      merged = true;
     } else if (!srcJoker && tgtJoker) {
       // 조커(tgt)가 src 종류로 복사 변신, src는 그대로
       p.dice[targetKey] = makeDice(src.type, tgt.dot, p.diceLevels[src.type]||1, cl[src.type]||1);
-      rerender();
+      merged = true;
     } else if (src.type === tgt.type && src.dot < 7) {
       // 일반 합성
       const newType = rnd(p.deck);
       delete p.dice[srcKey];
       p.dice[targetKey] = makeDice(newType, src.dot + 1, p.diceLevels[newType]||1, cl[newType]||1);
-      rerender();
+      merged = true;
     }
+    if (merged) { p.comboCount = (p.comboCount||0) + 1; rerender(); }
   }, [rerender]);
 
   const handleDragStart = useCallback((pid, key, startX, startY) => {
