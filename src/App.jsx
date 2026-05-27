@@ -62,8 +62,8 @@ const LV_COST = [100, 200, 400, 700];
 const G = [null,[25,25],[50,25],[75,25],[25,50],[50,50],[75,50],[25,75],[50,75],[75,75]];
 const DOT_LAYOUTS = {
   1:[G[5]],
-  2:[G[1],G[9]],
-  3:[G[1],G[5],G[9]],
+  2:[G[3],G[7]],
+  3:[G[3],G[5],G[7]],
   4:[G[1],G[3],G[7],G[9]],
   5:[G[1],G[3],G[5],G[7],G[9]],
   6:[G[1],G[3],G[4],G[6],G[7],G[9]],
@@ -385,6 +385,8 @@ function applyHit(p, proj, tgt) {
   let dmg = proj.dmg;
   if (ab.type === "bossKiller" && tgt.isBoss) dmg *= ab.mult;
   if (ab.type === "randomDmg") { const lo = def.baseDmg*dm*lm; dmg = lo + Math.random()*(lo*4); }
+  const isCrit = Math.random() < 0.05;
+  if (isCrit) { dmg *= 2.0; spawnFx(p,"burst",tgt.x,tgt.y,"#FFD700"); }
   dealDmg(p, tgt, dmg);
   if (ab.type === "splash") {
     for (const e of p.enemies) if (e.id!==tgt.id && e.hp>0 && Math.hypot(e.x-tgt.x,e.y-tgt.y)<=ab.radius) dealDmg(p,e,ab.dmg*dm*lm);
@@ -487,12 +489,17 @@ function tickPlayer(p, dt, onKill) {
     const gunY = cy + (py/100 - 0.5) * dotSize;
 
     const dmg = def.baseDmg * (1+(d.dot-1)*0.3) * (1+(d.level-1)*0.5);
-    const sorted = [...live].sort((a,b) => {
-      if (def.target==="first") return a.dist-b.dist;
-      if (def.target==="strongest") return b.hp-a.hp;
-      return 0;
-    });
-    const tgt = sorted[d.subIdx % sorted.length];
+    let tgt;
+    if (def.target === "random") {
+      tgt = live[Math.floor(Math.random() * live.length)];
+    } else if (def.target === "noPoison") {
+      const pool = live.filter(e => !e.poison);
+      tgt = (pool.length ? pool : live).reduce((a,b) => a.dist < b.dist ? a : b);
+    } else if (def.target === "strongest") {
+      tgt = live.reduce((a,b) => a.hp > b.hp ? a : b);
+    } else {
+      tgt = live.reduce((a,b) => a.dist < b.dist ? a : b);
+    }
     newProjs.push({id:uid(),x:gunX,y:gunY,targetId:tgt.id,dmg,diceType:d.type,dot:d.dot,level:d.level,color:def.border,speed:520,angleSpread:0,tx:tgt.x,ty:tgt.y});
     d.subIdx = (d.subIdx + 1) % d.dot;
   }
