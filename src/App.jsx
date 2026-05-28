@@ -127,7 +127,7 @@ const LV_COST = [100, 200, 400, 700];
 //  SVG DICE
 // ═══════════════════════════════════════════════════════════════
 // 3x3 그리드 위치 (1~9): 1=좌상, 2=중상, 3=우상, 4=좌중, 5=중, 6=우중, 7=좌하, 8=중하, 9=우하
-const G = [null,[25,25],[50,25],[75,25],[25,50],[50,50],[75,50],[25,75],[50,75],[75,75]];
+const G = [null,[27.5,27.5],[50,27.5],[72.5,27.5],[27.5,50],[50,50],[72.5,50],[27.5,72.5],[50,72.5],[72.5,72.5]];
 const DOT_LAYOUTS = {
   1:[G[5]],
   2:[G[3],G[7]],
@@ -261,9 +261,9 @@ function DiceCardLegend({ size, borderColor="#C8A000", children }) {
   );
 }
 
-function DiceImgBase({ size, img, dotColor, dot }) {
+function DiceImgBase({ size, img, dotColor, dot, scale=1.1 }) {
   const S = size;
-  const sc = 1.1, off = -(S * 0.05);
+  const sc = scale, off = -(S * (sc - 1) / 2);
   return (
     <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
       <image href={img} x={off} y={off} width={S*sc} height={S*sc}/>
@@ -309,15 +309,15 @@ function DiceWind({ size=60, dot=1 }) {
 }
 
 function DiceGambleGrowth({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={gamblegrowthImg} dotColor={DICE_DEFS.gamblegrowth.border} dot={dot}/>;
+  return <DiceImgBase size={size} img={gamblegrowthImg} dotColor={DICE_DEFS.gamblegrowth.border} dot={dot} scale={1.25}/>;
 }
 
 function DiceJoker({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={jokerImg} dotColor="#FF8800" dot={dot}/>;
+  return <DiceImgBase size={size} img={jokerImg} dotColor="#FF8800" dot={dot} scale={1.25}/>;
 }
 
 function DiceGrowth({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={growthImg} dotColor={DICE_DEFS.growth.border} dot={dot}/>;
+  return <DiceImgBase size={size} img={growthImg} dotColor={DICE_DEFS.growth.border} dot={dot} scale={1.25}/>;
 }
 
 function DiceLight({ size=60, dot=1 }) {
@@ -407,11 +407,11 @@ function DiceMoon({ size=60, dot=1, active=false, moonCount=0 }) {
 }
 
 function DiceAdapt({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={adaptImg} dotColor="#FF8800" dot={dot}/>;
+  return <DiceImgBase size={size} img={adaptImg} dotColor="#FF8800" dot={dot} scale={1.25}/>;
 }
 
 function DiceSummon({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={summonImg} dotColor={DICE_DEFS.summon.border} dot={dot}/>;
+  return <DiceImgBase size={size} img={summonImg} dotColor={DICE_DEFS.summon.border} dot={dot} scale={1.25}/>;
 }
 
 const DICE_SVG = { fire:DiceFire, electric:DiceElectric, poison:DicePoison, ice:DiceIce, steel:DiceSteel, broken:DiceBroken, gamble:DiceGamble, lock:DiceLock, wind:DiceWind, gamblegrowth:DiceGambleGrowth, joker:DiceJoker, growth:DiceGrowth, light:DiceLight, sun:DiceSun, combo:DiceCombo, moon:DiceMoon, adapt:DiceAdapt, summon:DiceSummon };
