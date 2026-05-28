@@ -1,4 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import fireImg     from "./assets/dice/fire.webp";
+import electricImg from "./assets/dice/electric.webp";
+import windImg     from "./assets/dice/wind.webp";
+import poisonImg   from "./assets/dice/poison.webp";
+import iceImg      from "./assets/dice/ice.webp";
 
 // ═══════════════════════════════════════════════════════════════
 //  LAYOUT
@@ -246,60 +251,30 @@ function DiceCardLegend({ size, borderColor="#C8A000", children }) {
   );
 }
 
-function DiceFire({ size=60, dot=1 }) {
-  const S=size, b=DICE_DEFS.fire.border;
+function DiceImgBase({ size, img, dotColor, dot }) {
+  const S = size;
   return (
-    <DiceCard size={S} border={b}>
-      <path d={`M${S*.5},${S*.12} C${S*.5},${S*.12} ${S*.68},${S*.28} ${S*.66},${S*.42} C${S*.74},${S*.34} ${S*.76},${S*.22} ${S*.72},${S*.14} C${S*.82},${S*.26} ${S*.84},${S*.42} ${S*.78},${S*.54} C${S*.84},${S*.5} ${S*.86},${S*.4} ${S*.84},${S*.32} C${S*.9},${S*.44} ${S*.88},${S*.62} ${S*.78},${S*.7} C${S*.84},${S*.68} ${S*.86},${S*.6} ${S*.85},${S*.52} C${S*.9},${S*.64} ${S*.87},${S*.78} ${S*.76},${S*.84} C${S*.66},${S*.9} ${S*.58},${S*.88} ${S*.5},${S*.88} C${S*.42},${S*.88} ${S*.34},${S*.9} ${S*.24},${S*.84} C${S*.13},${S*.78} ${S*.1},${S*.64} ${S*.15},${S*.52} C${S*.14},${S*.6} ${S*.16},${S*.68} ${S*.22},${S*.7} C${S*.12},${S*.62} ${S*.1},${S*.44} ${S*.16},${S*.32} C${S*.15},${S*.4} ${S*.16},${S*.5} ${S*.22},${S*.54} C${S*.16},${S*.42} ${S*.18},${S*.26} ${S*.28},${S*.14} C${S*.24},${S*.22} ${S*.26},${S*.34} ${S*.34},${S*.42} C${S*.32},${S*.28} ${S*.5},${S*.12} Z`}
-        fill={b} opacity="0.22"/>
-      <path d={`M${S*.5},${S*.18} C${S*.5},${S*.18} ${S*.62},${S*.3} ${S*.6},${S*.4} C${S*.66},${S*.34} ${S*.67},${S*.25} ${S*.65},${S*.2} C${S*.72},${S*.3} ${S*.72},${S*.42} ${S*.66},${S*.5} C${S*.7},${S*.48} ${S*.71},${S*.4} ${S*.7},${S*.34} C${S*.74},${S*.44} ${S*.72},${S*.58} ${S*.64},${S*.66} C${S*.68},${S*.64} ${S*.69},${S*.56} ${S*.68},${S*.5} C${S*.72},${S*.6} ${S*.69},${S*.72} ${S*.6},${S*.78} C${S*.54},${S*.82} ${S*.5},${S*.82} ${S*.46},${S*.82} C${S*.4},${S*.82} ${S*.36},${S*.82} ${S*.32},${S*.77} C${S*.26},${S*.7} ${S*.26},${S*.6} ${S*.3},${S*.5} C${S*.29},${S*.56} ${S*.3},${S*.64} ${S*.34},${S*.66} C${S*.26},${S*.58} ${S*.24},${S*.44} ${S*.28},${S*.34} C${S*.27},${S*.4} ${S*.28},${S*.48} ${S*.32},${S*.5} C${S*.26},${S*.42} ${S*.26},${S*.3} ${S*.34},${S*.2} C${S*.32},${S*.25} ${S*.32},${S*.34} ${S*.38},${S*.4} C${S*.36},${S*.3} ${S*.5},${S*.18} Z`}
-        fill={b} opacity="0.28"/>
-      <DotLayer dot={dot} color={b} size={S}/>
-    </DiceCard>
+    <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
+      <image href={img} x="0" y="0" width={S} height={S}/>
+      <DotLayer dot={dot} color={dotColor} size={S}/>
+    </svg>
   );
+}
+
+function DiceFire({ size=60, dot=1 }) {
+  return <DiceImgBase size={size} img={fireImg} dotColor={DICE_DEFS.fire.border} dot={dot}/>;
 }
 
 function DiceElectric({ size=60, dot=1 }) {
-  const S=size, b=DICE_DEFS.electric.border;
-  const zz = (points) => <polyline points={points} fill="none" stroke={b} strokeWidth={S*0.045} strokeLinejoin="round" opacity="0.5"/>;
-  return (
-    <DiceCard size={S} border={b}>
-      {zz(`${S*.09},${S*.15} ${S*.18},${S*.09} ${S*.27},${S*.15} ${S*.36},${S*.09} ${S*.45},${S*.15} ${S*.54},${S*.09} ${S*.63},${S*.15} ${S*.72},${S*.09} ${S*.81},${S*.15} ${S*.91},${S*.09}`)}
-      {zz(`${S*.09},${S*.85} ${S*.18},${S*.91} ${S*.27},${S*.85} ${S*.36},${S*.91} ${S*.45},${S*.85} ${S*.54},${S*.91} ${S*.63},${S*.85} ${S*.72},${S*.91} ${S*.81},${S*.85} ${S*.91},${S*.91}`)}
-      {zz(`${S*.15},${S*.09} ${S*.09},${S*.18} ${S*.15},${S*.27} ${S*.09},${S*.36} ${S*.15},${S*.45} ${S*.09},${S*.54} ${S*.15},${S*.63} ${S*.09},${S*.72} ${S*.15},${S*.81} ${S*.09},${S*.91}`)}
-      {zz(`${S*.85},${S*.09} ${S*.91},${S*.18} ${S*.85},${S*.27} ${S*.91},${S*.36} ${S*.85},${S*.45} ${S*.91},${S*.54} ${S*.85},${S*.63} ${S*.91},${S*.72} ${S*.85},${S*.81} ${S*.91},${S*.91}`)}
-      <DotLayer dot={dot} color={b} size={S}/>
-    </DiceCard>
-  );
+  return <DiceImgBase size={size} img={electricImg} dotColor={DICE_DEFS.electric.border} dot={dot}/>;
 }
 
 function DicePoison({ size=60, dot=1 }) {
-  const S=size, b=DICE_DEFS.poison.border;
-  const blobBorder = `M${S*.5},${S*.04} C${S*.62},${S*.04} ${S*.7},${S*.06} ${S*.78},${S*.1} C${S*.88},${S*.14} ${S*.96},${S*.22} ${S*.96},${S*.32} C${S*.97},${S*.4} ${S*.94},${S*.46} ${S*.96},${S*.54} C${S*.98},${S*.62} ${S*.96},${S*.72} ${S*.9},${S*.8} C${S*.84},${S*.88} ${S*.74},${S*.93} ${S*.64},${S*.95} C${S*.56},${S*.97} ${S*.48},${S*.95} ${S*.4},${S*.96} C${S*.32},${S*.97} ${S*.22},${S*.95} ${S*.14},${S*.9} C${S*.06},${S*.85} ${S*.02},${S*.76} ${S*.02},${S*.66} C${S*.01},${S*.58} ${S*.04},${S*.5} ${S*.02},${S*.42} C${S*.0},${S*.34} ${S*.02},${S*.24} ${S*.08},${S*.16} C${S*.14},${S*.08} ${S*.24},${S*.04} ${S*.34},${S*.04} C${S*.4},${S*.04} ${S*.46},${S*.04} ${S*.5},${S*.04} Z`;
-  return (
-    <DiceCard size={S} border={b}>
-      <path d={blobBorder} fill={b} opacity="0.32"/>
-      {[[S*.18,S*.22,S*.07],[S*.8,S*.18,S*.06],[S*.15,S*.75,S*.05],[S*.82,S*.78,S*.08]].map(([cx,cy,r],i)=>(
-        <circle key={i} cx={cx} cy={cy} r={r} fill={b} opacity="0.48"/>
-      ))}
-      <DotLayer dot={dot} color={b} size={S}/>
-    </DiceCard>
-  );
+  return <DiceImgBase size={size} img={poisonImg} dotColor={DICE_DEFS.poison.border} dot={dot}/>;
 }
 
 function DiceIce({ size=60, dot=1 }) {
-  const S=size, b=DICE_DEFS.ice.border;
-  const spikes = (pts) => <polyline points={pts} fill={b} opacity="0.58"/>;
-  const topSpike=`${S*.08},${S*.13} ${S*.14},${S*.08} ${S*.2},${S*.14} ${S*.26},${S*.08} ${S*.32},${S*.14} ${S*.38},${S*.08} ${S*.44},${S*.14} ${S*.5},${S*.08} ${S*.56},${S*.14} ${S*.62},${S*.08} ${S*.68},${S*.14} ${S*.74},${S*.08} ${S*.8},${S*.14} ${S*.86},${S*.08} ${S*.92},${S*.13}`;
-  const botSpike=`${S*.08},${S*.87} ${S*.14},${S*.92} ${S*.2},${S*.86} ${S*.26},${S*.92} ${S*.32},${S*.86} ${S*.38},${S*.92} ${S*.44},${S*.86} ${S*.5},${S*.92} ${S*.56},${S*.86} ${S*.62},${S*.92} ${S*.68},${S*.86} ${S*.74},${S*.92} ${S*.8},${S*.86} ${S*.86},${S*.92} ${S*.92},${S*.87}`;
-  const leftSpike=`${S*.13},${S*.08} ${S*.08},${S*.14} ${S*.14},${S*.2} ${S*.08},${S*.26} ${S*.14},${S*.32} ${S*.08},${S*.38} ${S*.14},${S*.44} ${S*.08},${S*.5} ${S*.14},${S*.56} ${S*.08},${S*.62} ${S*.14},${S*.68} ${S*.08},${S*.74} ${S*.14},${S*.8} ${S*.08},${S*.86} ${S*.13},${S*.92}`;
-  const rightSpike=`${S*.87},${S*.08} ${S*.92},${S*.14} ${S*.86},${S*.2} ${S*.92},${S*.26} ${S*.86},${S*.32} ${S*.92},${S*.38} ${S*.86},${S*.44} ${S*.92},${S*.5} ${S*.86},${S*.56} ${S*.92},${S*.62} ${S*.86},${S*.68} ${S*.92},${S*.74} ${S*.86},${S*.8} ${S*.92},${S*.86} ${S*.87},${S*.92}`;
-  return (
-    <DiceCard size={S} border={b}>
-      {spikes(topSpike)}{spikes(botSpike)}{spikes(leftSpike)}{spikes(rightSpike)}
-      <DotLayer dot={dot} color={b} size={S}/>
-    </DiceCard>
-  );
+  return <DiceImgBase size={size} img={iceImg} dotColor={DICE_DEFS.ice.border} dot={dot}/>;
 }
 
 function DiceSteel({ size=60, dot=1 }) {
@@ -382,23 +357,7 @@ function DiceLock({ size=60, dot=1 }) {
 }
 
 function DiceWind({ size=60, dot=1 }) {
-  const S=size, b=DICE_DEFS.wind.border;
-  // 방패 형태 - 위는 완만한 아치, 아래는 유기적 곡선
-  const shp = [
-    `M${S*.16},${S*.19}`,
-    `Q${S*.5},${S*.07} ${S*.84},${S*.19}`,
-    `C${S*.94},${S*.36} ${S*.9},${S*.54} ${S*.83},${S*.67}`,
-    `Q${S*.67},${S*.85} ${S*.5},${S*.92}`,
-    `Q${S*.33},${S*.85} ${S*.17},${S*.67}`,
-    `C${S*.1},${S*.54} ${S*.06},${S*.36} ${S*.16},${S*.19} Z`,
-  ].join(" ");
-  return (
-    <DiceCard size={S} border={b}>
-      <path d={shp} fill={b} opacity="0.20"/>
-      <path d={shp} fill="none" stroke={b} strokeWidth={S*.042} strokeLinejoin="round" opacity="0.52"/>
-      <DotLayer dot={dot} color={b} size={S}/>
-    </DiceCard>
-  );
+  return <DiceImgBase size={size} img={windImg} dotColor={DICE_DEFS.wind.border} dot={dot}/>;
 }
 
 function DiceGambleGrowth({ size=60, dot=1 }) {
