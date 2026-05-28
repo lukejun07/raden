@@ -261,13 +261,15 @@ function DiceCardLegend({ size, borderColor="#C8A000", children }) {
   );
 }
 
-function DiceImgBase({ size, img, dotColor, dot, scale=1.1 }) {
+function DiceImgBase({ size, img, dotColor, dot, scale=1.1, dotDy=0 }) {
   const S = size;
   const sc = scale, off = -(S * (sc - 1) / 2);
   return (
     <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
       <image href={img} x={off} y={off} width={S*sc} height={S*sc}/>
-      <DotLayer dot={dot} color={dotColor} size={S}/>
+      <g transform={dotDy ? `translate(0,${dotDy})` : undefined}>
+        <DotLayer dot={dot} color={dotColor} size={S}/>
+      </g>
     </svg>
   );
 }
@@ -309,15 +311,15 @@ function DiceWind({ size=60, dot=1 }) {
 }
 
 function DiceGambleGrowth({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={gamblegrowthImg} dotColor={DICE_DEFS.gamblegrowth.border} dot={dot} scale={1.25}/>;
+  return <DiceImgBase size={size} img={gamblegrowthImg} dotColor={DICE_DEFS.gamblegrowth.border} dot={dot}/>;
 }
 
 function DiceJoker({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={jokerImg} dotColor="#FF8800" dot={dot} scale={1.25}/>;
+  return <DiceImgBase size={size} img={jokerImg} dotColor="#FF8800" dot={dot} scale={1.25} dotDy={-size*0.065}/>;
 }
 
 function DiceGrowth({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={growthImg} dotColor={DICE_DEFS.growth.border} dot={dot} scale={1.25}/>;
+  return <DiceImgBase size={size} img={growthImg} dotColor={DICE_DEFS.growth.border} dot={dot} scale={1.25} dotDy={-size*0.065}/>;
 }
 
 function DiceLight({ size=60, dot=1 }) {
@@ -407,11 +409,11 @@ function DiceMoon({ size=60, dot=1, active=false, moonCount=0 }) {
 }
 
 function DiceAdapt({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={adaptImg} dotColor="#FF8800" dot={dot} scale={1.25}/>;
+  return <DiceImgBase size={size} img={adaptImg} dotColor="#FF8800" dot={dot}/>;
 }
 
 function DiceSummon({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={summonImg} dotColor={DICE_DEFS.summon.border} dot={dot} scale={1.25}/>;
+  return <DiceImgBase size={size} img={summonImg} dotColor={DICE_DEFS.summon.border} dot={dot} scale={1.25} dotDy={-size*0.065}/>;
 }
 
 const DICE_SVG = { fire:DiceFire, electric:DiceElectric, poison:DicePoison, ice:DiceIce, steel:DiceSteel, broken:DiceBroken, gamble:DiceGamble, lock:DiceLock, wind:DiceWind, gamblegrowth:DiceGambleGrowth, joker:DiceJoker, growth:DiceGrowth, light:DiceLight, sun:DiceSun, combo:DiceCombo, moon:DiceMoon, adapt:DiceAdapt, summon:DiceSummon };
