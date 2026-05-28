@@ -1358,7 +1358,7 @@ function InventoryScreen({ player, deck, setDeck, inventory, onClose }) {
   );
 }
 
-function DeckPanel({ label, deck, setDeck, accent, classLevels, setClass, critMult, setCritMult }) {
+function DeckPanel({ label, deck, setDeck, accent, classLevels, setClass, critMult, setCritMult, onInvOpen }) {
   const toggle = k => {
     if (deck.includes(k)) { if (deck.length > 1) setDeck(deck.filter(x=>x!==k)); }
     else if (deck.length < 5) setDeck([...deck,k]);
@@ -1366,6 +1366,7 @@ function DeckPanel({ label, deck, setDeck, accent, classLevels, setClass, critMu
   return (
     <div style={{background:"#fff",border:`1.5px solid ${accent}44`,borderRadius:14,padding:16,minWidth:260,boxShadow:`0 4px 20px ${accent}18`}}>
       <div style={{fontWeight:800,color:accent,marginBottom:10,fontSize:14}}>{label} ({deck.length}/5)</div>
+      <button onClick={onInvOpen} style={{fontSize:11,padding:'3px 10px',background:accent,border:'none',color:'#fff',borderRadius:6,cursor:'pointer',fontWeight:700,marginLeft:'auto',display:'block',marginBottom:8}}>📦 인벤토리</button>
       {DICE_KEYS.map(k=>{
         const d=DICE_DEFS[k]; const sel=deck.includes(k);
         return (
@@ -1387,7 +1388,7 @@ function DeckPanel({ label, deck, setDeck, accent, classLevels, setClass, critMu
   );
 }
 
-function DeckBuilder({ p1Deck,p2Deck,setP1Deck,setP2Deck,p1Class,setP1Class,p2Class,setP2Class,p1CritMult,setP1CritMult,p2CritMult,setP2CritMult,onStart }) {
+function DeckBuilder({ p1Deck,p2Deck,setP1Deck,setP2Deck,p1Class,setP1Class,p2Class,setP2Class,p1CritMult,setP1CritMult,p2CritMult,setP2CritMult,onStart,setInvOpen,setInvPlayer }) {
   const setP1ClassFor = (type, v) => setP1Class(prev=>({...prev,[type]:v}));
   const setP2ClassFor = (type, v) => setP2Class(prev=>({...prev,[type]:v}));
   return (
@@ -1397,8 +1398,8 @@ function DeckBuilder({ p1Deck,p2Deck,setP1Deck,setP2Deck,p1Class,setP1Class,p2Cl
         <div style={{fontSize:12,color:"#99a",letterSpacing:2,marginTop:6}}>덱 5개 선택 · C = 클래스 레벨</div>
       </div>
       <div style={{display:"flex",gap:24,flexWrap:"wrap",justifyContent:"center"}}>
-        <DeckPanel label="🔵 P1 덱" deck={p1Deck} setDeck={setP1Deck} accent="#3355EE" classLevels={p1Class} setClass={setP1ClassFor} critMult={p1CritMult} setCritMult={setP1CritMult}/>
-        <DeckPanel label="🔴 P2 덱" deck={p2Deck} setDeck={setP2Deck} accent="#EE3355" classLevels={p2Class} setClass={setP2ClassFor} critMult={p2CritMult} setCritMult={setP2CritMult}/>
+        <DeckPanel label="🔵 P1 덱" deck={p1Deck} setDeck={setP1Deck} accent="#3355EE" classLevels={p1Class} setClass={setP1ClassFor} critMult={p1CritMult} setCritMult={setP1CritMult} onInvOpen={() => { setInvPlayer(0); setInvOpen(true); }}/>
+        <DeckPanel label="🔴 P2 덱" deck={p2Deck} setDeck={setP2Deck} accent="#EE3355" classLevels={p2Class} setClass={setP2ClassFor} critMult={p2CritMult} setCritMult={setP2CritMult} onInvOpen={() => { setInvPlayer(1); setInvOpen(true); }}/>
       </div>
       <button onClick={onStart} style={{padding:"14px 56px",background:"linear-gradient(135deg,#3355EE,#1133BB)",border:"none",borderRadius:14,color:"#fff",fontSize:18,fontWeight:800,cursor:"pointer",boxShadow:"0 4px 24px #3355EE55",letterSpacing:2}}>⚔️ 대전 시작</button>
     </div>
@@ -1441,6 +1442,9 @@ export default function App() {
   const [p2Class, setP2Class] = useState({});
   const [p1CritMult, setP1CritMult] = useState(2);
   const [p2CritMult, setP2CritMult] = useState(2);
+  const [inventory] = useState(() => Object.fromEntries(DICE_KEYS.map(k => [k, 3])));
+  const [invOpen, setInvOpen] = useState(false);
+  const [invPlayer, setInvPlayer] = useState(0);
 
   const gsRef = useRef(null);
   const rafRef = useRef(null);
@@ -1699,7 +1703,18 @@ export default function App() {
     rerender();
   }, [rerender]);
 
-  if (phase==="deck") return <DeckBuilder p1Deck={p1Deck} p2Deck={p2Deck} setP1Deck={setP1Deck} setP2Deck={setP2Deck} p1Class={p1Class} setP1Class={setP1Class} p2Class={p2Class} setP2Class={setP2Class} p1CritMult={p1CritMult} setP1CritMult={setP1CritMult} p2CritMult={p2CritMult} setP2CritMult={setP2CritMult} onStart={startGame}/>;
+  if (phase==="deck") return <>
+    <DeckBuilder p1Deck={p1Deck} p2Deck={p2Deck} setP1Deck={setP1Deck} setP2Deck={setP2Deck} p1Class={p1Class} setP1Class={setP1Class} p2Class={p2Class} setP2Class={setP2Class} p1CritMult={p1CritMult} setP1CritMult={setP1CritMult} p2CritMult={p2CritMult} setP2CritMult={setP2CritMult} onStart={startGame} setInvOpen={setInvOpen} setInvPlayer={setInvPlayer}/>
+    {invOpen && (
+      <InventoryScreen
+        player={invPlayer}
+        deck={invPlayer === 0 ? p1Deck : p2Deck}
+        setDeck={invPlayer === 0 ? setP1Deck : setP2Deck}
+        inventory={inventory}
+        onClose={() => setInvOpen(false)}
+      />
+    )}
+  </>;
   if (phase==="over") return <GameOver winner={winner} gs={gsRef.current} onRestart={()=>{setPhase("deck");setWinner(null);setDragVis(null);dragRef.current=null;}}/>;
 
   const gs = gsRef.current; if (!gs) return null;
