@@ -807,74 +807,35 @@ function dealDmg(p, e, dmg) {
 }
 
 function applyHit(p, proj, tgt) {
-  const def = DICE_REGISTRY[proj.diceType], ab = def.ability;
+  const DC = DICE_REGISTRY[proj.diceType];
   let dmg = proj.dmg;
-  if (ab.type === "bossKiller" && tgt.isBoss) dmg *= ab.mult;
-  if (ab.type === "randomDmg") {
-    dmg = proj.dmg + Math.random() * proj.dmg; // [1x, 2x] 크리티컬 데미지까지
-  } else {
+
+  // 크리티컬 (randomDmg 타입은 skipCrit=true로 스킵)
+  if (!DC.skipCrit) {
     const critChance = 0.05 + (proj.moonActivated ? 0.05 : 0);
-    if (Math.random() < critChance) { dmg *= (proj.critMult || 2); spawnFx(p,"burst",tgt.x,tgt.y,"#FFD700"); }
+    if (Math.random() < critChance) {
+      dmg *= proj.critMult || 2;
+      spawnFx(p, "burst", tgt.x, tgt.y, "#FFD700");
+    }
   }
   // 달 활성화: 공격력 +10%
   if (proj.moonActivated) dmg *= 1.10;
-  // 태양 체인 데미지 배율
-  if (ab.type === "sun") {
-    const sunDice = p.dice[proj.diceKey];
-    if (sunDice) {
-      if (sunDice.sunLastTarget === tgt.id) sunDice.sunHits = (sunDice.sunHits||0)+1;
-      else { sunDice.sunHits=1; sunDice.sunLastTarget=tgt.id; }
-      dmg *= Math.ceil(sunDice.sunHits/2);
-    }
-  }
+
+  // 주사위별 데미지 조정 (배율 등)
+  dmg = DC.onModifyDmg(proj, tgt, dmg, p);
+
+  // 데미지 적용
   dealDmg(p, tgt, dmg);
-  // 태양 스플래시 (활성화 시: 3,5,7,9개)
-  if (ab.type === "sun" && (proj.sunCount||0) >= 3 && (proj.sunCount%2)===1) {
-    const sunDice = p.dice[proj.diceKey];
-    const sd = getStat(def.stats.splashDmg, proj.classLv, proj.level);
-    const sunHits = sunDice?.sunHits || 1;
-    const splashR = Math.min(CELL * 0.5 + (sunHits - 1) * CELL * 0.2, CELL * 2.5);
-    for (const e of p.enemies) if (e.id!==tgt.id&&e.hp>0&&Math.hypot(e.x-tgt.x,e.y-tgt.y)<=splashR) dealDmg(p,e,sd);
-    spawnFx(p,"burst",tgt.x,tgt.y,def.border);
-  }
-  if (ab.type === "splash") {
-    const sd = getStat(def.stats.splashDmg, proj.classLv, proj.level);
-    for (const e of p.enemies) if (e.id!==tgt.id && e.hp>0 && Math.hypot(e.x-tgt.x,e.y-tgt.y)<=ab.radius) dealDmg(p,e,sd);
-    spawnFx(p,"burst",tgt.x,tgt.y,def.border==="rainbow"?"#FF8800":def.border);
-  }
-  if (ab.type === "chain") {
-    const cd = getStat(def.stats.chainDmg, proj.classLv, proj.level);
-    let last = tgt;
-    for (let ci=0;ci<ab.count;ci++) {
-      const nx = p.enemies.filter(e=>e.id!==tgt.id&&e.id!==last.id&&e.hp>0)
-        .sort((a,b)=>Math.hypot(a.x-last.x,a.y-last.y)-Math.hypot(b.x-last.x,b.y-last.y))[0];
-      if (!nx) break;
-      dealDmg(p, nx, cd*ab.ratios[ci]);
-      spawnFx(p,"chain",nx.x,nx.y,def.border); last = nx;
-    }
-  }
-  if (ab.type === "poison") {
-    tgt.poison = { dps: getStat(def.stats.dotDps, proj.classLv, proj.level), timer:0, tick:ab.tick };
-  }
-  if (ab.type === "slow") {
-    const sp = getStat(def.stats.slowPct, proj.classLv, proj.level);
-    tgt.slowStacks = Math.min((tgt.slowStacks||0)+1, ab.maxStacks);
-    tgt.slowPctPerStack = Math.max(tgt.slowPctPerStack||0, sp);
-    tgt.slowTimer = 3;
-  }
-  if (ab.type === "lock" && !tgt.everLocked) {
-    const prob = getStat(def.stats.lockProb, proj.classLv, proj.level) / 100;
-    if (Math.random() < prob) {
-      tgt.locked = getStat(def.stats.lockDur, proj.classLv, proj.level);
-      tgt.everLocked = true;
-      spawnFx(p,"lock",tgt.x,tgt.y,"#8090FF");
-    }
-  }
-  const hitColor = def.border === "#RAINBOW" ? "#FF88DD"
-    : (proj.diceType==="sun" && (proj.sunCount||0)>=3 && (proj.sunCount%2)===1) ? "#DD5500"
-    : def.border;
-  spawnFx(p,"hit",tgt.x,tgt.y,hitColor);
-  spawnTxt(p,tgt.x,tgt.y,Math.round(dmg));
+
+  // 주사위별 명중 효과 (스플래시/체인/독/감속/잠금 등)
+  DC.onHit(proj, tgt, p.enemies, p, dmg);
+
+  // 명중 이펙트
+  const hitColor = DC.border === "#RAINBOW" ? "#FF88DD"
+    : (proj.diceType === "sun" && (proj.sunCount||0) >= 3 && (proj.sunCount%2) === 1) ? "#DD5500"
+    : DC.border;
+  spawnFx(p, "hit", tgt.x, tgt.y, hitColor);
+  spawnTxt(p, tgt.x, tgt.y, Math.round(dmg));
 }
 
 function tickPlayer(p, dt, onKill) {
@@ -1040,26 +1001,9 @@ function tickPlayer(p, dt, onKill) {
   // newProjs are NOT moved this tick so they render at the exact gun position first
   p.projs = [...p.projs.filter(pr=>!hitIds.has(pr.id)), ...newProjs];
 
-  // 성장/도박성장 타이머
+  // onTick 훅 호출
   for (const [key, d] of Object.entries(p.dice)) {
-    if (!d) continue;
-    const def = DICE_REGISTRY[d.type];
-    const ab = def.ability.type;
-    if (ab !== "gamblegrowth" && ab !== "growth") continue;
-    const gcl = (p.classLevels||{})[d.type]||1;
-    if (d.growthTimer === undefined) d.growthTimer = getStat(def.stats.growthTime, gcl, p.diceLevels[d.type]||1);
-    d.growthTimer -= dt;
-    if (d.growthTimer <= 0) {
-      if (ab === "gamblegrowth") {
-        const newType = rnd(p.deck);
-        const newDot = Math.floor(Math.random() * 7) + 1;
-        p.dice[key] = makeDice(newType, newDot, p.diceLevels[newType]||1, (p.classLevels||{})[newType]||1);
-      } else {
-        const newDot = Math.min(d.dot + 1, 7);
-        const newType = rnd(p.deck);
-        p.dice[key] = makeDice(newType, newDot, p.diceLevels[newType]||1, (p.classLevels||{})[newType]||1);
-      }
-    }
+    if (d) DICE_REGISTRY[d.type].onTick(d, p, dt, key);
   }
 
   p.effects = p.effects
