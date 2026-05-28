@@ -126,6 +126,61 @@ const DICE_DEFS = {
 const DICE_KEYS = Object.keys(DICE_DEFS);
 const LV_COST = [100, 200, 400, 700];
 
+const DICE_RARITY = {
+  fire:'common', electric:'common', poison:'common', ice:'common',
+  steel:'common', broken:'common', gamble:'common', lock:'common', wind:'common',
+  gamblegrowth:'rare', light:'rare',
+  adapt:'heroic',
+  joker:'legendary', growth:'legendary', sun:'legendary',
+  combo:'legendary', moon:'legendary', summon:'legendary',
+};
+const RARITY_LABEL = { common:'일반', rare:'희귀', heroic:'영웅', legendary:'전설' };
+const RARITY_COLOR = { common:'#777', rare:'#3399FF', heroic:'#9944DD', legendary:'#E8A000' };
+const RARITY_ORDER = { legendary:0, heroic:1, rare:2, common:3 };
+const TARGET_LABEL = { first:'최전방', strongest:'최강', random:'랜덤', noPoison:'미중독', none:'없음(오라)' };
+
+const DICE_DESC = {
+  fire:         "불꽃을 발사해 타겟과 주변 적에게 스플래시 피해를 입힙니다.",
+  electric:     "번개를 발사해 최대 3개의 적에게 연쇄 피해를 입힙니다.",
+  poison:       "독침을 발사해 타겟에게 지속 독 피해를 입힙니다.",
+  ice:          "얼음 탄환을 발사해 적의 이동속도를 감소시킵니다. 최대 3스택.",
+  steel:        "강력한 포탄을 발사합니다. 보스 몬스터에게 추가 피해.",
+  broken:       "고장난 주사위. 무작위 대상에게 피해를 입힙니다.",
+  gamble:       "도박 피해를 입힙니다. 피해량이 7~777배 범위로 무작위 결정.",
+  lock:         "타겟을 일정 확률로 잠금하여 이동을 멈춥니다.",
+  wind:         "가장 빠른 적을 공격하며, 자신의 공격속도를 빠르게 유지합니다.",
+  gamblegrowth: "시간이 지날수록 피해량이 증가하는 도박형 주사위입니다.",
+  joker:        "합성 시 어떤 타입과도 합성 가능한 만능 전설 주사위.",
+  growth:       "시간이 지날수록 데미지가 지수적으로 증가합니다.",
+  light:        "공격하지 않고 주변 아군 주사위의 공격속도를 증가시킵니다.",
+  sun:          "낮 시간대에 활성화되어 빠른 공격속도와 스플래시 피해를 발휘합니다.",
+  combo:        "연속 처치 시 콤보가 쌓이며 피해량이 배수로 증가합니다.",
+  moon:         "밤 시간대에 활성화되어 아군 공격력을 증폭시키는 오라를 발산합니다.",
+  adapt:        "주변에 배치된 주사위의 공격 타입을 복사하여 공격합니다.",
+  summon:       "공격 명중 시 일정 확률로 빈 슬롯에 새 주사위를 소환합니다.",
+};
+
+const DICE_EXTRA_STATS = {
+  fire:        [{ label:'스플래시 피해', key:'splashDmg' }],
+  electric:    [{ label:'체인 수', fixed:'3개' }, { label:'체인 배율', fixed:'100/70/30%' }],
+  poison:      [{ label:'DoT 피해/초', key:'dotDps' }],
+  ice:         [{ label:'감속률(%)', key:'slowPct' }, { label:'최대 스택', fixed:'3' }],
+  steel:       [{ label:'보스 배율', fixed:'×2.0' }],
+  broken:      [],
+  gamble:      [{ label:'피해 범위', fixed:'7~777배' }],
+  lock:        [{ label:'잠금 확률(%)', key:'lockProb' }, { label:'잠금 시간(초)', key:'lockDur' }],
+  wind:        [{ label:'공속 버프(%)', key:'speedBuff' }],
+  gamblegrowth:[{ label:'성장 시간(초)', key:'growthTime' }],
+  joker:       [{ label:'특수 효과', fixed:'만능 합성' }],
+  growth:      [{ label:'성장 주기(초)', key:'growthTime' }],
+  light:       [{ label:'공속 오라', fixed:'주변 +15%' }],
+  sun:         [{ label:'스플래시 피해', key:'splashDmg' }, { label:'활성 조건', fixed:'낮 시간대' }],
+  combo:       [{ label:'콤보 피해', key:'comboDmg' }],
+  moon:        [{ label:'활성 조건', fixed:'밤 시간대' }],
+  adapt:       [{ label:'효과', fixed:'주변 타입 복사' }],
+  summon:      [{ label:'소환 조건', fixed:'명중 확률' }],
+};
+
 // ═══════════════════════════════════════════════════════════════
 //  SVG DICE
 // ═══════════════════════════════════════════════════════════════
@@ -1109,6 +1164,195 @@ function CritMultSelector({ value, onChange, accent }) {
             fontSize:11,fontWeight:800,cursor:"pointer",padding:0,
           }}>{m}×</button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function InventoryScreen({ player, deck, setDeck, inventory, onClose }) {
+  const [selected, setSelected] = useState(null);
+  const [statClass, setStatClass] = useState(1);
+  const [statPower, setStatPower] = useState(1);
+
+  const accent = player === 0 ? "#3355EE" : "#EE3355";
+  const pLabel = player === 0 ? "P1" : "P2";
+
+  const sortedKeys = [...DICE_KEYS].sort((a, b) => RARITY_ORDER[DICE_RARITY[a]] - RARITY_ORDER[DICE_RARITY[b]]);
+
+  const toggleDeck = type => {
+    if (deck.includes(type)) setDeck(deck.filter(x => x !== type));
+    else if (deck.length < 5) setDeck([...deck, type]);
+  };
+
+  const statVal = (statKey, clv, plv) => {
+    const def = DICE_DEFS[selected];
+    if (!def?.stats[statKey]) return '-';
+    const v = getStat(def.stats[statKey], clv, plv);
+    return Number.isInteger(v) ? String(v) : v.toFixed(1);
+  };
+
+  const buildRows = () => {
+    if (!selected) return [];
+    const def = DICE_DEFS[selected];
+    const clv = statClass, plv = statPower;
+    const atkInt = getStat(def.stats.atkInt, clv, plv);
+    const atkSpd = atkInt >= 9999 ? '오라' : (1 / Math.max(atkInt, 0.05)).toFixed(2) + '/s';
+    const dmg = def.stats.dmg ? statVal('dmg', clv, plv) : '-';
+    const target = TARGET_LABEL[def.target] || def.target;
+    const extras = [...(DICE_EXTRA_STATS[selected] || []), null, null, null].slice(0, 3).map(e => {
+      if (!e) return { label: '-', value: '-' };
+      if (e.fixed) return { label: e.label, value: e.fixed };
+      return { label: e.label, value: statVal(e.key, clv, plv) };
+    });
+    return [
+      [{ label: '기본 공격력', value: dmg }, { label: '공격속도', value: atkSpd }],
+      [{ label: '타겟', value: target }, extras[0]],
+      [extras[1], extras[2]],
+    ];
+  };
+
+  const def = selected ? DICE_DEFS[selected] : null;
+  const b = def ? (def.border === '#RAINBOW' ? '#AA00AA' : def.border) : '#888';
+  const inDeck = selected ? deck.includes(selected) : false;
+  const rows = buildRows();
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#000A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: '#F5F0FF', width: '94vw', maxWidth: 940, maxHeight: '96vh', borderRadius: 20, boxShadow: '0 8px 48px #0006', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: "'Segoe UI',system-ui,sans-serif" }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', background: accent, color: '#fff', gap: 12, flexShrink: 0 }}>
+          <span style={{ fontSize: 17, fontWeight: 900 }}>🎲 {pLabel} 인벤토리</span>
+          <span style={{ flex: 1 }} />
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>← 닫기</button>
+        </div>
+
+        {/* Deck slots */}
+        <div style={{ padding: '10px 20px', background: '#fff', borderBottom: '1px solid #E8E0F8', display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#667', marginRight: 4 }}>덱 ({deck.length}/5)</span>
+          {Array.from({ length: 5 }, (_, i) => {
+            const t = deck[i];
+            const dd = t ? DICE_DEFS[t] : null;
+            return (
+              <div key={i} onClick={() => t && setSelected(t)}
+                style={{ width: 54, height: 54, borderRadius: 10, border: t ? `2px solid ${dd?.border === '#RAINBOW' ? '#AA00AA' : dd?.border || '#ccc'}` : '2px dashed #ccc', background: t ? '#fff' : '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: t ? 'pointer' : 'default', position: 'relative', flexShrink: 0 }}>
+                {t ? <>
+                  <DiceSVG type={t} dot={3} size={44} />
+                  <div style={{ position: 'absolute', top: -8, left: -5, background: accent, color: '#fff', fontSize: 9, fontWeight: 900, borderRadius: 4, padding: '1px 4px' }}>{i + 1}</div>
+                  <div onClick={e => { e.stopPropagation(); setDeck(deck.filter(x => x !== t)); }}
+                    style={{ position: 'absolute', top: -7, right: -6, background: '#E00', color: '#fff', fontSize: 10, fontWeight: 900, borderRadius: 10, width: 15, height: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', lineHeight: 1 }}>×</div>
+                </> : <span style={{ fontSize: 13, color: '#ccc', fontWeight: 700 }}>{i + 1}</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Body */}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+          {/* Dice grid */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
+            {['legendary', 'heroic', 'rare', 'common'].map(rarity => {
+              const group = sortedKeys.filter(k => DICE_RARITY[k] === rarity);
+              if (!group.length) return null;
+              return (
+                <div key={rarity} style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: RARITY_COLOR[rarity], marginBottom: 6, letterSpacing: 1, textTransform: 'uppercase' }}>
+                    {RARITY_LABEL[rarity]}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 7 }}>
+                    {group.map(k => {
+                      const d = DICE_DEFS[k];
+                      const isSel = selected === k;
+                      const isIn = deck.includes(k);
+                      const bc = d.border === '#RAINBOW' ? '#AA00AA' : d.border;
+                      return (
+                        <div key={k} onClick={() => { setSelected(k === selected ? null : k); setStatClass(d.minClass || 1); setStatPower(1); }}
+                          style={{ background: isSel ? bc + '22' : isIn ? bc + '11' : '#fff', border: `2px solid ${isSel ? bc : isIn ? bc + '88' : '#E8E0F8'}`, borderRadius: 10, padding: '8px 6px', textAlign: 'center', cursor: 'pointer', transition: 'all .12s', position: 'relative' }}>
+                          <DiceSVG type={k} dot={3} size={48} />
+                          <div style={{ fontSize: 10, fontWeight: 700, color: bc, marginTop: 3 }}>{d.name}</div>
+                          <div style={{ fontSize: 9, color: '#999' }}>보유 {inventory[k] || 0}개</div>
+                          {isIn && <div style={{ position: 'absolute', top: 3, right: 5, fontSize: 9, fontWeight: 900, color: accent }}>덱</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Info panel */}
+          {selected && def && (
+            <div style={{ width: 272, borderLeft: '1px solid #E8E0F8', background: '#fff', overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0 }}>
+
+              {/* Top: image+meta left, description right */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                  <DiceSVG type={selected} dot={4} size={72} />
+                  <div style={{ fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 5, background: RARITY_COLOR[DICE_RARITY[selected]] + '22', color: RARITY_COLOR[DICE_RARITY[selected]] }}>
+                    {RARITY_LABEL[DICE_RARITY[selected]]}
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 900, color: b }}>{def.name}</div>
+                  <div style={{ fontSize: 10, color: '#888' }}>보유 {inventory[selected] || 0}개</div>
+                </div>
+                <div style={{ flex: 1, fontSize: 11, color: '#445', lineHeight: 1.75, paddingTop: 2 }}>
+                  {DICE_DESC[selected] || '-'}
+                </div>
+              </div>
+
+              {/* Deck button */}
+              <button onClick={() => toggleDeck(selected)}
+                style={{ background: inDeck ? '#CC2200' : deck.length < 5 ? b : '#999', border: 'none', color: '#fff', borderRadius: 8, padding: '7px', fontWeight: 800, cursor: inDeck || deck.length < 5 ? 'pointer' : 'default', fontSize: 12 }}>
+                {inDeck ? '덱에서 제거' : deck.length < 5 ? '덱에 추가' : '덱이 가득참 (5/5)'}
+              </button>
+
+              {/* Class level buttons */}
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#667', marginBottom: 4 }}>클래스 레벨</div>
+                <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                  {[1, 2, 3, 4, 5, 6, 7].map(c => {
+                    const minC = def.minClass || 1;
+                    const disabled = c < minC;
+                    return (
+                      <button key={c} onClick={() => !disabled && setStatClass(c)}
+                        style={{ padding: '3px 6px', borderRadius: 5, border: `1.5px solid ${statClass === c ? b : '#ddd'}`, background: statClass === c ? b : disabled ? '#f0f0f0' : '#fafafa', color: statClass === c ? '#fff' : disabled ? '#ccc' : '#445', fontSize: 11, fontWeight: 700, cursor: disabled ? 'default' : 'pointer' }}>
+                        C{c}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Power level buttons */}
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#667', marginBottom: 4 }}>파워업 레벨</div>
+                <div style={{ display: 'flex', gap: 3 }}>
+                  {[1, 2, 3, 4, 5].map(p => (
+                    <button key={p} onClick={() => setStatPower(p)}
+                      style={{ padding: '3px 7px', borderRadius: 5, border: `1.5px solid ${statPower === p ? b : '#ddd'}`, background: statPower === p ? b : '#fafafa', color: statPower === p ? '#fff' : '#445', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                      P{p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Stats table */}
+              <div style={{ border: '1px solid #E8E0F8', borderRadius: 8, overflow: 'hidden', fontSize: 11 }}>
+                {rows.map((row, ri) => (
+                  <div key={ri} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: ri < rows.length - 1 ? '1px solid #E8E0F8' : 'none' }}>
+                    {row.map((cell, ci) => (
+                      <div key={ci} style={{ padding: '7px 9px', borderRight: ci === 0 ? '1px solid #E8E0F8' : 'none', background: ri % 2 === 0 ? '#F8F4FF' : '#fff' }}>
+                        <div style={{ fontSize: 9, color: '#999', fontWeight: 600, marginBottom: 1 }}>{cell.label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: cell.value === '-' ? '#ccc' : b }}>{cell.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
