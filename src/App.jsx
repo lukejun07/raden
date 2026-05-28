@@ -8,7 +8,12 @@ import steelImg    from "./assets/dice/steel.webp";
 import brokenImg   from "./assets/dice/broken.webp";
 import gambleImg   from "./assets/dice/gamble.webp";
 import lockImg     from "./assets/dice/lock.webp";
-import lightImg    from "./assets/dice/light.webp";
+import lightImg        from "./assets/dice/light.webp";
+import gamblegrowthImg from "./assets/dice/gamblegrowth.webp";
+import adaptImg        from "./assets/dice/adapt.webp";
+import jokerImg        from "./assets/dice/joker.webp";
+import growthImg       from "./assets/dice/growth.webp";
+import summonImg       from "./assets/dice/summon.webp";
 
 // ═══════════════════════════════════════════════════════════════
 //  LAYOUT
@@ -304,72 +309,15 @@ function DiceWind({ size=60, dot=1 }) {
 }
 
 function DiceGambleGrowth({ size=60, dot=1 }) {
-  const S=size, b="#BB8800";
-  return (
-    <DiceCard size={S} border={b}>
-      {[[S*.25,S*.3],[S*.75,S*.3],[S*.25,S*.7],[S*.75,S*.7]].map(([x,y],i)=>(
-        <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle"
-          fontSize={S*.18} fontWeight="900" fill={b} opacity="0.52"
-          style={{fontFamily:"Arial Black,Arial,sans-serif"}}>?</text>
-      ))}
-      <path d={`M${S*.5},${S*.14} L${S*.5},${S*.56} M${S*.36},${S*.28} L${S*.5},${S*.14} L${S*.64},${S*.28}`}
-        fill="none" stroke={b} strokeWidth={S*.052} strokeLinecap="round" strokeLinejoin="round" opacity="0.7"/>
-      <DotLayer dot={dot} color={b} size={S}/>
-    </DiceCard>
-  );
+  return <DiceImgBase size={size} img={gamblegrowthImg} dotColor={DICE_DEFS.gamblegrowth.border} dot={dot}/>;
 }
 
 function DiceJoker({ size=60, dot=1 }) {
-  const S=size;
-  const uid = useRef(`jk${_dcCtr++}`).current;
-  const rx = S*0.2, pad = S*0.1;
-  const rainbowStops = ["#FF0000","#FF8800","#FFEE00","#00CC00","#0088FF","#8800DD","#FF00AA"];
-  return (
-    <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
-      <defs>
-        <linearGradient id={`rbow_${uid}`} x1="0" y1="0" x2={S} y2={S} gradientUnits="userSpaceOnUse">
-          {rainbowStops.map((c,i)=><stop key={i} offset={`${i*100/6}%`} stopColor={c}/>)}
-        </linearGradient>
-        <linearGradient id={`glimj_${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%"   stopColor="white" stopOpacity="0.0"/>
-          <stop offset="35%"  stopColor="white" stopOpacity="0.7"/>
-          <stop offset="52%"  stopColor="white" stopOpacity="0.7"/>
-          <stop offset="100%" stopColor="white" stopOpacity="0.0"/>
-        </linearGradient>
-        <filter id={`shj_${uid}`} x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy={S*0.025} stdDeviation={S*0.04} floodColor="rgba(0,0,0,0.28)"/>
-        </filter>
-        <clipPath id={`clipj_${uid}`}>
-          <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65}/>
-        </clipPath>
-      </defs>
-      <rect x="0" y="0" width={S} height={S} rx={rx} fill="#F2EED8" filter={`url(#shj_${uid})`}/>
-      <GakNakBorder S={S} color={`url(#rbow_${uid})`}/>
-      <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65} fill="#FFFFFF"/>
-      <g clipPath={`url(#clipj_${uid})`}>
-        <text x={S*.5} y={S*.47} textAnchor="middle" dominantBaseline="middle"
-          fontSize={S*.55} fontWeight="900" fill={`url(#rbow_${uid})`} opacity="0.85"
-          style={{fontFamily:"Arial Black,Arial,sans-serif"}}>∞</text>
-        <DotLayer dot={dot} color={`url(#rbow_${uid})`} size={S} legend={true}/>
-      </g>
-      <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65} fill={`url(#glimj_${uid})`}/>
-    </svg>
-  );
+  return <DiceImgBase size={size} img={jokerImg} dotColor="#FF8800" dot={dot}/>;
 }
 
 function DiceGrowth({ size=60, dot=1 }) {
-  const S=size, b="#7700CC";
-  const bars=[[S*.15,S*.76,S*.15,S*.18],[S*.38,S*.76,S*.15,S*.34],[S*.61,S*.76,S*.15,S*.5]];
-  return (
-    <DiceCardLegend size={S} borderColor={b}>
-      {bars.map(([x,y,w,h],i)=>(
-        <rect key={i} x={x} y={y-h} width={w} height={h} rx={S*.02} fill={b} opacity={0.3+i*.12}/>
-      ))}
-      <path d={`M${S*.5},${S*.09} L${S*.5},${S*.52} M${S*.34},${S*.24} L${S*.5},${S*.09} L${S*.66},${S*.24}`}
-        fill="none" stroke={b} strokeWidth={S*.048} strokeLinecap="round" strokeLinejoin="round" opacity="0.62"/>
-      <DotLayer dot={dot} color={b} size={S} legend={true}/>
-    </DiceCardLegend>
-  );
+  return <DiceImgBase size={size} img={growthImg} dotColor={DICE_DEFS.growth.border} dot={dot}/>;
 }
 
 function DiceLight({ size=60, dot=1 }) {
@@ -459,60 +407,11 @@ function DiceMoon({ size=60, dot=1, active=false, moonCount=0 }) {
 }
 
 function DiceAdapt({ size=60, dot=1 }) {
-  const S=size;
-  const uid = useRef(`adp${_dcCtr++}`).current;
-  const rx = S*0.2, pad = S*0.1;
-  const cx=S*.5, cy=S*.42;
-  const inf = `M${cx},${cy} C${cx-S*.1},${cy-S*.18} ${cx-S*.38},${cy-S*.18} ${cx-S*.28},${cy} C${cx-S*.38},${cy+S*.18} ${cx-S*.1},${cy+S*.18} ${cx},${cy} C${cx+S*.1},${cy-S*.18} ${cx+S*.38},${cy-S*.18} ${cx+S*.28},${cy} C${cx+S*.38},${cy+S*.18} ${cx+S*.1},${cy+S*.18} ${cx},${cy} Z`;
-  const rainbowStops = ["#FF0000","#FF8800","#FFEE00","#00CC00","#0088FF","#8800DD","#FF00AA"];
-  return (
-    <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
-      <defs>
-        <linearGradient id={`rbowa_${uid}`} x1="0" y1="0" x2={S} y2={S} gradientUnits="userSpaceOnUse">
-          {rainbowStops.map((c,i)=><stop key={i} offset={`${i*100/6}%`} stopColor={c}/>)}
-        </linearGradient>
-        <linearGradient id={`glima_${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%"   stopColor="white" stopOpacity="0.0"/>
-          <stop offset="35%"  stopColor="white" stopOpacity="0.7"/>
-          <stop offset="52%"  stopColor="white" stopOpacity="0.7"/>
-          <stop offset="100%" stopColor="white" stopOpacity="0.0"/>
-        </linearGradient>
-        <filter id={`sha_${uid}`} x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy={S*0.025} stdDeviation={S*0.04} floodColor="rgba(0,0,0,0.28)"/>
-        </filter>
-        <clipPath id={`clipa_${uid}`}>
-          <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65}/>
-        </clipPath>
-      </defs>
-      <rect x="1" y="1" width={S-2} height={S-2} rx={rx} fill={`url(#rbowa_${uid})`} filter={`url(#sha_${uid})`}/>
-      <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65} fill="#FFFFFF"/>
-      <g clipPath={`url(#clipa_${uid})`}>
-        <path d={inf} fill={`url(#rbowa_${uid})`} opacity="0.25"/>
-        <path d={inf} fill="none" stroke={`url(#rbowa_${uid})`} strokeWidth={S*.045} strokeLinecap="round" opacity="0.72"/>
-        <DotLayer dot={dot} color={`url(#rbowa_${uid})`} size={S}/>
-      </g>
-      <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65} fill={`url(#glima_${uid})`}/>
-    </svg>
-  );
+  return <DiceImgBase size={size} img={adaptImg} dotColor="#FF8800" dot={dot}/>;
 }
 
 function DiceSummon({ size=60, dot=1 }) {
-  const S=size, b="#009944";
-  const cx=S*.5, cy=S*.5;
-  const pPts = Array.from({length:5},(_,i)=>{
-    const a=(i*72-90)*Math.PI/180;
-    return [cx+S*.24*Math.cos(a), cy+S*.24*Math.sin(a)];
-  });
-  const starPts = [0,2,4,1,3,0].map(i=>`${pPts[i][0].toFixed(2)},${pPts[i][1].toFixed(2)}`).join(" ");
-  return (
-    <DiceCardLegend size={S} borderColor={b}>
-      <circle cx={cx} cy={cy} r={S*.32} fill="none" stroke={b} strokeWidth={S*.022} opacity="0.38"/>
-      <circle cx={cx} cy={cy} r={S*.24} fill="none" stroke={b} strokeWidth={S*.018} opacity="0.48"/>
-      <polyline points={starPts} fill="none" stroke={b} strokeWidth={S*.032} strokeLinejoin="round" opacity="0.58"/>
-      <circle cx={cx} cy={cy} r={S*.09} fill={b} opacity="0.68"/>
-      <DotLayer dot={dot} color={b} size={S} legend={true}/>
-    </DiceCardLegend>
-  );
+  return <DiceImgBase size={size} img={summonImg} dotColor={DICE_DEFS.summon.border} dot={dot}/>;
 }
 
 const DICE_SVG = { fire:DiceFire, electric:DiceElectric, poison:DicePoison, ice:DiceIce, steel:DiceSteel, broken:DiceBroken, gamble:DiceGamble, lock:DiceLock, wind:DiceWind, gamblegrowth:DiceGambleGrowth, joker:DiceJoker, growth:DiceGrowth, light:DiceLight, sun:DiceSun, combo:DiceCombo, moon:DiceMoon, adapt:DiceAdapt, summon:DiceSummon };
