@@ -78,10 +78,13 @@ class DiceBase {
   static stats        = { atkInt: { base: 1.0, cM: 0, lM: 0 } };
   static extraStatDefs = [];     // [{ label, key? fixed? }, ...]
 
+  static skipCrit = false;                                          // randomDmg 전용 크리티컬 스킵 플래그
+  static onModifyDmg(proj, tgt, dmg, p) { return dmg; }           // 데미지 배율 조정 (deal 이전)
+  static onHit(proj, tgt, enemies, p, finalDmg) {}                 // 명중 후 특수 효과
+  static onTick(d, p, dt, key) {}                                  // 매 프레임 (성장 타이머 등)
+
   // Phase 2에서 게임 루프가 호출할 훅 (현재는 no-op)
-  static onHit(proj, target, enemies, player) {}
   static onKill(proj, target, player) {}
-  static onTick(dice, player, dt) {}
   static onMerge(dice, player) {}
 
   // 렌더링 (DiceSVG에서 호출)
@@ -100,6 +103,13 @@ class FireDice extends DiceBase {
   static ability = { type: 'splash', radius: CELL * 1.8 };
   static stats   = { dmg: { base: 20, cP: 3, lP: 10 }, atkInt: { base: 0.8, cM: 0.01, lM: 0 }, splashDmg: { base: 20, cP: 3, lP: 20 } };
   static extraStatDefs = [{ label: '스플래시 피해', key: 'splashDmg' }];
+  static onHit(proj, tgt, enemies, p) {
+    const sd = getStat(FireDice.stats.splashDmg, proj.classLv, proj.level);
+    for (const e of enemies)
+      if (e.id !== tgt.id && e.hp > 0 && Math.hypot(e.x-tgt.x, e.y-tgt.y) <= FireDice.ability.radius)
+        dealDmg(p, e, sd);
+    spawnFx(p, "burst", tgt.x, tgt.y, FireDice.border);
+  }
   static render(p) { return <DiceImgBase {...p} img={fireImg} dotColor={FireDice.border}/>; }
 }
 
@@ -114,6 +124,20 @@ class ElectricDice extends DiceBase {
   static ability = { type: 'chain', count: 3, ratios: [1.0, 0.7, 0.3] };
   static stats   = { dmg: { base: 30, cP: 3, lP: 10 }, atkInt: { base: 0.7, cM: 0.02, lM: 0 }, chainDmg: { base: 30, cP: 3, lP: 20 } };
   static extraStatDefs = [{ label: '체인 수', fixed: '3개' }, { label: '체인 배율', fixed: '100/70/30%' }];
+  static onHit(proj, tgt, enemies, p) {
+    const ab = ElectricDice.ability;
+    const cd = getStat(ElectricDice.stats.chainDmg, proj.classLv, proj.level);
+    let last = tgt;
+    for (let ci = 0; ci < ab.count; ci++) {
+      const nx = enemies
+        .filter(e => e.id !== tgt.id && e.id !== last.id && e.hp > 0)
+        .sort((a,b) => Math.hypot(a.x-last.x,a.y-last.y) - Math.hypot(b.x-last.x,b.y-last.y))[0];
+      if (!nx) break;
+      dealDmg(p, nx, cd * ab.ratios[ci]);
+      spawnFx(p, "chain", nx.x, nx.y, ElectricDice.border);
+      last = nx;
+    }
+  }
   static render(p) { return <DiceImgBase {...p} img={electricImg} dotColor={ElectricDice.border}/>; }
 }
 
@@ -128,6 +152,13 @@ class PoisonDice extends DiceBase {
   static ability = { type: 'poison', tick: 1.0 };
   static stats   = { dmg: { base: 20, cP: 2, lP: 10 }, atkInt: { base: 1.3, cM: 0, lM: 0 }, dotDps: { base: 50, cP: 5, lP: 25 } };
   static extraStatDefs = [{ label: 'DoT 피해/초', key: 'dotDps' }];
+  static onHit(proj, tgt) {
+    tgt.poison = {
+      dps: getStat(PoisonDice.stats.dotDps, proj.classLv, proj.level),
+      timer: 0,
+      tick: PoisonDice.ability.tick,
+    };
+  }
   static render(p) { return <DiceImgBase {...p} img={poisonImg} dotColor={PoisonDice.border}/>; }
 }
 
@@ -142,6 +173,12 @@ class IceDice extends DiceBase {
   static ability = { type: 'slow', maxStacks: 3 };
   static stats   = { dmg: { base: 30, cP: 3, lP: 30 }, atkInt: { base: 1.5, cM: 0.02, lM: 0 }, slowPct: { base: 5, cP: 0.5, lP: 2 } };
   static extraStatDefs = [{ label: '감속률(%)', key: 'slowPct' }, { label: '최대 스택', fixed: '3' }];
+  static onHit(proj, tgt) {
+    const sp = getStat(IceDice.stats.slowPct, proj.classLv, proj.level);
+    tgt.slowStacks = Math.min((tgt.slowStacks||0)+1, IceDice.ability.maxStacks);
+    tgt.slowPctPerStack = Math.max(tgt.slowPctPerStack||0, sp);
+    tgt.slowTimer = 3;
+  }
   static render(p) { return <DiceImgBase {...p} img={iceImg} dotColor={IceDice.border}/>; }
 }
 
@@ -156,6 +193,9 @@ class SteelDice extends DiceBase {
   static ability = { type: 'bossKiller', mult: 2.0 };
   static stats   = { dmg: { base: 100, cP: 10, lP: 100 }, atkInt: { base: 1.0, cM: 0, lM: 0 } };
   static extraStatDefs = [{ label: '보스 배율', fixed: '×2.0' }];
+  static onModifyDmg(proj, tgt, dmg) {
+    return tgt.isBoss ? dmg * SteelDice.ability.mult : dmg;
+  }
   static render(p) { return <DiceImgBase {...p} img={steelImg} dotColor={SteelDice.border}/>; }
 }
 
@@ -184,6 +224,10 @@ class GambleDice extends DiceBase {
   static ability = { type: 'randomDmg' };
   static stats   = { dmg: { base: 7, cP: 10, lP: 77 }, atkInt: { base: 1.0, cM: 0.01, lM: 0 } };
   static extraStatDefs = [{ label: '피해 범위', fixed: '7~777배' }];
+  static skipCrit = true;
+  static onModifyDmg(proj, tgt, dmg) {
+    return dmg + Math.random() * dmg;   // [1x ~ 2x]
+  }
   static render(p) { return <DiceImgBase {...p} img={gambleImg} dotColor={GambleDice.border}/>; }
 }
 
@@ -198,6 +242,15 @@ class LockDice extends DiceBase {
   static ability = { type: 'lock' };
   static stats   = { dmg: { base: 30, cP: 5, lP: 20 }, atkInt: { base: 0.8, cM: 0.01, lM: 0 }, lockProb: { base: 4, cP: 1, lP: 2 }, lockDur: { base: 3, cP: 0.2, lP: 0.5 } };
   static extraStatDefs = [{ label: '잠금 확률(%)', key: 'lockProb' }, { label: '잠금 시간(초)', key: 'lockDur' }];
+  static onHit(proj, tgt, enemies, p) {
+    if (tgt.everLocked) return;
+    const prob = getStat(LockDice.stats.lockProb, proj.classLv, proj.level) / 100;
+    if (Math.random() < prob) {
+      tgt.locked = getStat(LockDice.stats.lockDur, proj.classLv, proj.level);
+      tgt.everLocked = true;
+      spawnFx(p, "lock", tgt.x, tgt.y, "#8090FF");
+    }
+  }
   static render(p) { return <DiceImgBase {...p} img={lockImg} dotColor={LockDice.border}/>; }
 }
 
@@ -228,6 +281,17 @@ class GambleGrowthDice extends DiceBase {
   static ability = { type: 'gamblegrowth' };
   static stats   = { dmg: { base: 30, cP: 0, lP: 0 }, atkInt: { base: 1.0, cM: 0, lM: 0 }, growthTime: { base: 45, cM: 1, lM: 1 } };
   static extraStatDefs = [{ label: '성장 시간(초)', key: 'growthTime' }];
+  static onTick(d, p, dt, key) {
+    const gcl = (p.classLevels||{})[d.type] || 1;
+    if (d.growthTimer === undefined)
+      d.growthTimer = getStat(GambleGrowthDice.stats.growthTime, gcl, p.diceLevels[d.type]||1);
+    d.growthTimer -= dt;
+    if (d.growthTimer <= 0) {
+      const newType = rnd(p.deck);
+      const newDot = Math.floor(Math.random() * 7) + 1;
+      p.dice[key] = makeDice(newType, newDot, p.diceLevels[newType]||1, (p.classLevels||{})[newType]||1);
+    }
+  }
   static render(p) { return <DiceImgBase {...p} img={gamblegrowthImg} dotColor={GambleGrowthDice.border}/>; }
 }
 
@@ -325,6 +389,27 @@ class SunDice extends DiceBase {
   static ability = { type: 'sun', splashRadius: CELL * 0.9 };
   static stats   = { dmg: { base: 40, cP: 5, lP: 11 }, atkInt: { base: 1.2, cM: 0, lM: 0 }, splashDmg: { base: 40, cP: 5, lP: 11 } };
   static extraStatDefs = [{ label: '스플래시 피해', key: 'splashDmg' }, { label: '활성 조건', fixed: '낮 시간대' }];
+  static onModifyDmg(proj, tgt, dmg, p) {
+    const sunDice = p.dice[proj.diceKey];
+    if (sunDice) {
+      if (sunDice.sunLastTarget === tgt.id) sunDice.sunHits = (sunDice.sunHits||0) + 1;
+      else { sunDice.sunHits = 1; sunDice.sunLastTarget = tgt.id; }
+      dmg *= Math.ceil(sunDice.sunHits / 2);
+    }
+    return dmg;
+  }
+  static onHit(proj, tgt, enemies, p) {
+    if ((proj.sunCount||0) >= 3 && (proj.sunCount % 2) === 1) {
+      const sunDice = p.dice[proj.diceKey];
+      const sd = getStat(SunDice.stats.splashDmg, proj.classLv, proj.level);
+      const sunHits = sunDice?.sunHits || 1;
+      const splashR = Math.min(CELL * 0.5 + (sunHits - 1) * CELL * 0.2, CELL * 2.5);
+      for (const e of enemies)
+        if (e.id !== tgt.id && e.hp > 0 && Math.hypot(e.x-tgt.x, e.y-tgt.y) <= splashR)
+          dealDmg(p, e, sd);
+      spawnFx(p, "burst", tgt.x, tgt.y, SunDice.border);
+    }
+  }
   static render({ size, dot, active }) {
     if (active) return <DiceImgBase size={size} dot={dot} img={sunImg} dotColor="#DD5500" scale={1.25} imgDy={-size * 0.065}/>;
     return <SunSVGInactive size={size} dot={dot}/>;
