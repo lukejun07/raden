@@ -1,0 +1,10 @@
+export const CELL = 68;
+export const COLS = 5, ROWS = 3;
+export const BW = (COLS + 2) * CELL;
+export const BH = (ROWS + 2) * CELL;
+export const BASE_SPEED = 50;
+export const LV_COST = [100, 200, 400, 700];
+export const RARITY_LABEL = { common:'일반', rare:'희귀', heroic:'영웅', legendary:'전설' };
+export const RARITY_COLOR = { common:'#777', rare:'#3399FF', heroic:'#9944DD', legendary:'#E8A000' };
+export const RARITY_ORDER = { legendary:0, heroic:1, rare:2, common:3 };
+export const TARGET_LABEL = { first:'최전방', strongest:'최강', random:'랜덤', noPoison:'미중독', none:'없음(오라)' };

@@ -1,0 +1,26 @@
+import { DICE_REGISTRY } from '../dice/index.js';
+import { dealDmg, spawnFx, spawnTxt } from './helpers.js';
+
+export function applyHit(p, proj, tgt) {
+  const DC = DICE_REGISTRY[proj.diceType];
+  let dmg = proj.dmg;
+
+  if (!DC.skipCrit) {
+    const critChance = 0.05 + (proj.moonActivated ? 0.05 : 0);
+    if (Math.random() < critChance) {
+      dmg *= proj.critMult || 2;
+      spawnFx(p, "burst", tgt.x, tgt.y, "#FFD700");
+    }
+  }
+  if (proj.moonActivated) dmg *= 1.10;
+
+  dmg = DC.onModifyDmg(proj, tgt, dmg, p);
+  dealDmg(p, tgt, dmg);
+  DC.onHit(proj, tgt, p.enemies, p, dmg);
+
+  const hitColor = DC.border === "#RAINBOW" ? "#FF88DD"
+    : (proj.diceType === "sun" && (proj.sunCount||0) >= 3 && (proj.sunCount%2) === 1) ? "#DD5500"
+    : DC.border;
+  spawnFx(p, "hit", tgt.x, tgt.y, hitColor);
+  spawnTxt(p, tgt.x, tgt.y, Math.round(dmg));
+}
