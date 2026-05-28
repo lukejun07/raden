@@ -4,6 +4,11 @@ import electricImg from "./assets/dice/electric.webp";
 import windImg     from "./assets/dice/wind.webp";
 import poisonImg   from "./assets/dice/poison.webp";
 import iceImg      from "./assets/dice/ice.webp";
+import steelImg    from "./assets/dice/steel.webp";
+import brokenImg   from "./assets/dice/broken.webp";
+import gambleImg   from "./assets/dice/gamble.webp";
+import lockImg     from "./assets/dice/lock.webp";
+import lightImg    from "./assets/dice/light.webp";
 
 // ═══════════════════════════════════════════════════════════════
 //  LAYOUT
@@ -253,9 +258,10 @@ function DiceCardLegend({ size, borderColor="#C8A000", children }) {
 
 function DiceImgBase({ size, img, dotColor, dot }) {
   const S = size;
+  const sc = 1.1, off = -(S * 0.05);
   return (
     <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
-      <image href={img} x="0" y="0" width={S} height={S}/>
+      <image href={img} x={off} y={off} width={S*sc} height={S*sc}/>
       <DotLayer dot={dot} color={dotColor} size={S}/>
     </svg>
   );
@@ -278,82 +284,19 @@ function DiceIce({ size=60, dot=1 }) {
 }
 
 function DiceSteel({ size=60, dot=1 }) {
-  const S=size, b=DICE_DEFS.steel.border;
-  const cx=S/2, cy=S/2;
-  const gearPath = () => {
-    const OR=S*.3, IR=S*.2, teeth=8;
-    let d="";
-    for(let i=0;i<teeth;i++){
-      const a0=(i/teeth)*Math.PI*2-Math.PI/2;
-      const a1=a0+(0.35/teeth)*Math.PI*2;
-      const a2=a0+(0.65/teeth)*Math.PI*2;
-      const a3=a0+(1/teeth)*Math.PI*2;
-      const pt=(r,a)=>[(cx+r*Math.cos(a)).toFixed(2),(cy+r*Math.sin(a)).toFixed(2)];
-      const [x0,y0]=pt(IR,a0),[x1,y1]=pt(OR,a1),[x2,y2]=pt(OR,a2),[x3,y3]=pt(IR,a3);
-      if(i===0) d+=`M${x0},${y0} `;
-      d+=`L${x1},${y1} L${x2},${y2} L${x3},${y3} `;
-    }
-    return d+"Z";
-  };
-  return (
-    <DiceCard size={S} border={b}>
-      <path d={gearPath()} fill={b} opacity="0.48"/>
-      <circle cx={cx} cy={cy} r={S*.1} fill={b} opacity="0.62"/>
-      <DotLayer dot={dot} color={b} size={S}/>
-    </DiceCard>
-  );
+  return <DiceImgBase size={size} img={steelImg} dotColor={DICE_DEFS.steel.border} dot={dot}/>;
 }
 
 function DiceBroken({ size=60, dot=1 }) {
-  const S=size, b=DICE_DEFS.broken.border;
-  const arr=(x,y,dir)=>{
-    const d={
-      up:`M${x},${y+S*.07} L${x},${y-S*.07} M${x-S*.05},${y-S*.03} L${x},${y-S*.07} L${x+S*.05},${y-S*.03}`,
-      down:`M${x},${y-S*.07} L${x},${y+S*.07} M${x-S*.05},${y+S*.03} L${x},${y+S*.07} L${x+S*.05},${y+S*.03}`,
-      left:`M${x+S*.07},${y} L${x-S*.07},${y} M${x-S*.03},${y-S*.05} L${x-S*.07},${y} L${x-S*.03},${y+S*.05}`,
-      right:`M${x-S*.07},${y} L${x+S*.07},${y} M${x+S*.03},${y-S*.05} L${x+S*.07},${y} L${x+S*.03},${y+S*.05}`,
-    };
-    return <path d={d[dir]} fill="none" stroke={b} strokeWidth={S*0.04} strokeLinecap="round" strokeLinejoin="round" opacity="0.55"/>;
-  };
-  return (
-    <DiceCard size={S} border={b}>
-      {arr(S*.18,S*.5,"left")}{arr(S*.82,S*.5,"right")}
-      {arr(S*.5,S*.18,"up")}{arr(S*.5,S*.82,"down")}
-      {arr(S*.18,S*.25,"up")}{arr(S*.82,S*.25,"up")}
-      {arr(S*.18,S*.75,"down")}{arr(S*.82,S*.75,"down")}
-      <DotLayer dot={dot} color={b} size={S}/>
-    </DiceCard>
-  );
+  return <DiceImgBase size={size} img={brokenImg} dotColor={DICE_DEFS.broken.border} dot={dot}/>;
 }
 
 function DiceGamble({ size=60, dot=1 }) {
-  const S=size, b=DICE_DEFS.gamble.border;
-  const qps=[[S*.15,S*.18],[S*.5,S*.13],[S*.85,S*.18],[S*.13,S*.5],[S*.87,S*.5],[S*.15,S*.82],[S*.5,S*.87],[S*.85,S*.82],[S*.28,S*.33],[S*.72,S*.33],[S*.28,S*.67],[S*.72,S*.67]];
-  return (
-    <DiceCard size={S} border={b}>
-      {qps.map(([x,y],i)=>(
-        <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle"
-          fontSize={S*.14} fontWeight="900" fill={b} opacity="0.62"
-          style={{fontFamily:"Arial Black,Arial,sans-serif"}}>?</text>
-      ))}
-      <DotLayer dot={dot} color={b} size={S}/>
-    </DiceCard>
-  );
+  return <DiceImgBase size={size} img={gambleImg} dotColor={DICE_DEFS.gamble.border} dot={dot}/>;
 }
 
 function DiceLock({ size=60, dot=1 }) {
-  const S=size, b=DICE_DEFS.lock.border;
-  const bw=S*.28, bh=S*.24, bx=S*.5-bw/2, by=S*.52;
-  return (
-    <DiceCard size={S} border={b}>
-      <rect x={bx} y={by} width={bw} height={bh} rx={S*.04} fill={b} opacity="0.52"/>
-      <path d={`M${S*.36},${by} L${S*.36},${S*.3} Q${S*.36},${S*.2} ${S*.5},${S*.2} Q${S*.64},${S*.2} ${S*.64},${S*.3} L${S*.64},${S*.3}`}
-        fill="none" stroke={b} strokeWidth={S*.07} strokeLinecap="round" opacity="0.45"/>
-      <circle cx={S*.5} cy={by+bh*.38} r={S*.05} fill={b} opacity="0.58"/>
-      <rect x={S*.47} y={by+bh*.44} width={S*.06} height={S*.08} rx={S*.02} fill={b} opacity="0.58"/>
-      <DotLayer dot={dot} color={b} size={S}/>
-    </DiceCard>
-  );
+  return <DiceImgBase size={size} img={lockImg} dotColor={DICE_DEFS.lock.border} dot={dot}/>;
 }
 
 function DiceWind({ size=60, dot=1 }) {
@@ -430,22 +373,7 @@ function DiceGrowth({ size=60, dot=1 }) {
 }
 
 function DiceLight({ size=60, dot=1 }) {
-  const S=size, b="#DDB800";
-  const cx=S*.5, cy=S*.5;
-  const rays=8;
-  const rayPaths=[];
-  for(let i=0;i<rays;i++){
-    const a=(i/rays)*Math.PI*2;
-    const r1=S*.22, r2=S*.42;
-    rayPaths.push(`M${(cx+r1*Math.cos(a)).toFixed(2)},${(cy+r1*Math.sin(a)).toFixed(2)} L${(cx+r2*Math.cos(a)).toFixed(2)},${(cy+r2*Math.sin(a)).toFixed(2)}`);
-  }
-  return (
-    <DiceCard size={S} border={b}>
-      {rayPaths.map((d,i)=><path key={i} d={d} stroke={b} strokeWidth={S*.048} strokeLinecap="round" opacity="0.6"/>)}
-      <circle cx={cx} cy={cy} r={S*.18} fill={b} opacity="0.72"/>
-      <DotLayer dot={dot} color={b} size={S}/>
-    </DiceCard>
-  );
+  return <DiceImgBase size={size} img={lightImg} dotColor={DICE_DEFS.light.border} dot={dot}/>;
 }
 
 function DiceSun({ size=60, dot=1, active=false }) {
