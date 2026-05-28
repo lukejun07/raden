@@ -57,129 +57,392 @@ function posOnPath(d) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  DICE DEFINITIONS (일반 등급 9종)
+//  DICE CLASS SYSTEM
 // ═══════════════════════════════════════════════════════════════
 // stats: (cP, cM) = 클래스 레벨당 증감 / (lP, lM) = 인게임 SP 파워업당 증감
-const DICE_DEFS = {
-  // ── 일반 등급 ──
-  fire:        { name:"불",     border:"#E02020", bg:"#F87070", target:"first",
-    ability:{ type:"splash", radius:CELL*1.8 },
-    stats:{ dmg:{base:20,cP:3,lP:10}, atkInt:{base:0.8,cM:0.01,lM:0}, splashDmg:{base:20,cP:3,lP:20} } },
-  electric:    { name:"전기",   border:"#C89000", bg:"#F5CF50", target:"first",
-    ability:{ type:"chain", count:3, ratios:[1.0,0.7,0.3] },
-    stats:{ dmg:{base:30,cP:3,lP:10}, atkInt:{base:0.7,cM:0.02,lM:0}, chainDmg:{base:30,cP:3,lP:20} } },
-  poison:      { name:"독",     border:"#44AA00", bg:"#88DD44", target:"noPoison",
-    ability:{ type:"poison", tick:1.0 },
-    stats:{ dmg:{base:20,cP:2,lP:10}, atkInt:{base:1.3,cM:0,lM:0}, dotDps:{base:50,cP:5,lP:25} } },
-  ice:         { name:"얼음",   border:"#0088EE", bg:"#55CCFF", target:"first",
-    ability:{ type:"slow", maxStacks:3 },
-    stats:{ dmg:{base:30,cP:3,lP:30}, atkInt:{base:1.5,cM:0.02,lM:0}, slowPct:{base:5,cP:0.5,lP:2} } },
-  steel:       { name:"쇠",     border:"#666666", bg:"#AAAAAA", target:"strongest",
-    ability:{ type:"bossKiller", mult:2.0 },
-    stats:{ dmg:{base:100,cP:10,lP:100}, atkInt:{base:1.0,cM:0,lM:0} } },
-  broken:      { name:"고장난", border:"#AA44CC", bg:"#CC88EE", target:"random",
-    ability:{ type:"none" },
-    stats:{ dmg:{base:50,cP:10,lP:50}, atkInt:{base:0.9,cM:0,lM:0} } },
-  gamble:      { name:"도박",   border:"#4422CC", bg:"#8866EE", target:"first",
-    ability:{ type:"randomDmg" },
-    stats:{ dmg:{base:7,cP:10,lP:77}, atkInt:{base:1.0,cM:0.01,lM:0} } },
-  lock:        { name:"잠금",   border:"#334488", bg:"#667799", target:"first",
-    ability:{ type:"lock" },
-    stats:{ dmg:{base:30,cP:5,lP:20}, atkInt:{base:0.8,cM:0.01,lM:0}, lockProb:{base:4,cP:1,lP:2}, lockDur:{base:3,cP:0.2,lP:0.5} } },
-  wind:        { name:"바람",   border:"#30C4A8", bg:"#55DDCC", target:"first",
-    ability:{ type:"windBuff" },
-    stats:{ dmg:{base:20,cP:3,lP:15}, atkInt:{base:0.45,cM:0,lM:0}, speedBuff:{base:10,cP:2,lP:10} } },
-  // ── 희귀 등급 ──
-  gamblegrowth:{ name:"도박성장", border:"#BB8800", bg:"#FFDD44", target:"first", minClass:3,
-    ability:{ type:"gamblegrowth" },
-    stats:{ dmg:{base:30,cP:0,lP:0}, atkInt:{base:1.0,cM:0,lM:0}, growthTime:{base:45,cM:1,lM:1} } },
-  // ── 전설 등급 ──
-  joker:       { name:"조커",   border:"#RAINBOW", bg:"#FFFFFF", target:"first", minClass:7,
-    ability:{ type:"joker" },
-    stats:{ dmg:{base:40,cP:5,lP:10}, atkInt:{base:1.5,cM:0,lM:0} } },
-  growth:      { name:"성장",   border:"#7700CC", bg:"#BB66FF", target:"first", minClass:7,
-    ability:{ type:"growth" },
-    stats:{ dmg:{base:10,cP:5,lP:10}, atkInt:{base:2.0,cM:0,lM:0}, growthTime:{base:21,cM:1,lM:0} } },
-  // ── 희귀 등급 (추가) ──
-  light:       { name:"빛",     border:"#DDB800", bg:"#FFFFD0", target:"none", minClass:3,
-    ability:{ type:"lightAura" },
-    stats:{ atkInt:{base:9999} } },
-  // ── 전설 등급 (추가) ──
-  sun:         { name:"태양",   border:"#886633", bg:"#DDAA66", target:"first", minClass:7,
-    ability:{ type:"sun", splashRadius:CELL*0.9 },
-    stats:{ dmg:{base:40,cP:5,lP:11}, atkInt:{base:1.2,cM:0,lM:0}, splashDmg:{base:40,cP:5,lP:11} } },
-  combo:       { name:"콤보",   border:"#CC1188", bg:"#FFDDEE", target:"first", minClass:7,
-    ability:{ type:"combo" },
-    stats:{ dmg:{base:50,cP:10,lP:10}, atkInt:{base:1.2,cM:0,lM:0}, comboDmg:{base:8,cP:2,lP:1} } },
-  moon:        { name:"달",     border:"#888888", bg:"#DDDDDD", target:"none", minClass:7,
-    ability:{ type:"moonAura" },
-    stats:{ atkInt:{base:9999} } },
-  // ── 영웅 등급 ──
-  adapt:       { name:"적응",   border:"#RAINBOW", bg:"#FFFFFF", target:"first", minClass:5,
-    ability:{ type:"adapt" },
-    stats:{ dmg:{base:20,cP:5,lP:10}, atkInt:{base:1.0,cM:0,lM:0} } },
-  // ── 전설 등급 ──
-  summon:      { name:"소환",   border:"#009944", bg:"#88FFAA", target:"first", minClass:7,
-    ability:{ type:"summon" },
-    stats:{ dmg:{base:10,cP:10,lP:10}, atkInt:{base:1.5,cM:0,lM:0} } },
-};
-const DICE_KEYS = Object.keys(DICE_DEFS);
+
+// ────────────────────────────────────────────────
+// Dice Class System
+// ────────────────────────────────────────────────
+
+class DiceBase {
+  static type     = null;
+  static name     = '';
+  static rarity   = 'common';   // 'common'|'rare'|'heroic'|'legendary'
+  static border   = '#888888';
+  static bg       = '#aaaaaa';
+  static target   = 'first';    // 'first'|'strongest'|'random'|'noPoison'|'none'
+  static minClass = 1;
+  static description  = '';
+  static ability      = { type: 'none' };
+  static stats        = { atkInt: { base: 1.0, cM: 0, lM: 0 } };
+  static extraStatDefs = [];     // [{ label, key? fixed? }, ...]
+
+  // Phase 2에서 게임 루프가 호출할 훅 (현재는 no-op)
+  static onHit(proj, target, enemies, player) {}
+  static onKill(proj, target, player) {}
+  static onTick(dice, player, dt) {}
+  static onMerge(dice, player) {}
+
+  // 렌더링 (DiceSVG에서 호출)
+  static render(props) { return null; }
+}
+
+// ── 일반 (Common) ──────────────────────────────
+class FireDice extends DiceBase {
+  static type    = 'fire';
+  static name    = '불';
+  static rarity  = 'common';
+  static border  = '#E02020';
+  static bg      = '#F87070';
+  static target  = 'first';
+  static description = '불꽃을 발사해 타겟과 주변 적에게 스플래시 피해를 입힙니다.';
+  static ability = { type: 'splash', radius: CELL * 1.8 };
+  static stats   = { dmg: { base: 20, cP: 3, lP: 10 }, atkInt: { base: 0.8, cM: 0.01, lM: 0 }, splashDmg: { base: 20, cP: 3, lP: 20 } };
+  static extraStatDefs = [{ label: '스플래시 피해', key: 'splashDmg' }];
+  static render(p) { return <DiceImgBase {...p} img={fireImg} dotColor={FireDice.border}/>; }
+}
+
+class ElectricDice extends DiceBase {
+  static type    = 'electric';
+  static name    = '전기';
+  static rarity  = 'common';
+  static border  = '#C89000';
+  static bg      = '#F5CF50';
+  static target  = 'first';
+  static description = '번개를 발사해 최대 3개의 적에게 연쇄 피해를 입힙니다.';
+  static ability = { type: 'chain', count: 3, ratios: [1.0, 0.7, 0.3] };
+  static stats   = { dmg: { base: 30, cP: 3, lP: 10 }, atkInt: { base: 0.7, cM: 0.02, lM: 0 }, chainDmg: { base: 30, cP: 3, lP: 20 } };
+  static extraStatDefs = [{ label: '체인 수', fixed: '3개' }, { label: '체인 배율', fixed: '100/70/30%' }];
+  static render(p) { return <DiceImgBase {...p} img={electricImg} dotColor={ElectricDice.border}/>; }
+}
+
+class PoisonDice extends DiceBase {
+  static type    = 'poison';
+  static name    = '독';
+  static rarity  = 'common';
+  static border  = '#44AA00';
+  static bg      = '#88DD44';
+  static target  = 'noPoison';
+  static description = '독침을 발사해 타겟에게 지속 독 피해를 입힙니다.';
+  static ability = { type: 'poison', tick: 1.0 };
+  static stats   = { dmg: { base: 20, cP: 2, lP: 10 }, atkInt: { base: 1.3, cM: 0, lM: 0 }, dotDps: { base: 50, cP: 5, lP: 25 } };
+  static extraStatDefs = [{ label: 'DoT 피해/초', key: 'dotDps' }];
+  static render(p) { return <DiceImgBase {...p} img={poisonImg} dotColor={PoisonDice.border}/>; }
+}
+
+class IceDice extends DiceBase {
+  static type    = 'ice';
+  static name    = '얼음';
+  static rarity  = 'common';
+  static border  = '#0088EE';
+  static bg      = '#55CCFF';
+  static target  = 'first';
+  static description = '얼음 탄환을 발사해 적의 이동속도를 감소시킵니다. 최대 3스택.';
+  static ability = { type: 'slow', maxStacks: 3 };
+  static stats   = { dmg: { base: 30, cP: 3, lP: 30 }, atkInt: { base: 1.5, cM: 0.02, lM: 0 }, slowPct: { base: 5, cP: 0.5, lP: 2 } };
+  static extraStatDefs = [{ label: '감속률(%)', key: 'slowPct' }, { label: '최대 스택', fixed: '3' }];
+  static render(p) { return <DiceImgBase {...p} img={iceImg} dotColor={IceDice.border}/>; }
+}
+
+class SteelDice extends DiceBase {
+  static type    = 'steel';
+  static name    = '쇠';
+  static rarity  = 'common';
+  static border  = '#666666';
+  static bg      = '#AAAAAA';
+  static target  = 'strongest';
+  static description = '강력한 포탄을 발사합니다. 보스 몬스터에게 추가 피해.';
+  static ability = { type: 'bossKiller', mult: 2.0 };
+  static stats   = { dmg: { base: 100, cP: 10, lP: 100 }, atkInt: { base: 1.0, cM: 0, lM: 0 } };
+  static extraStatDefs = [{ label: '보스 배율', fixed: '×2.0' }];
+  static render(p) { return <DiceImgBase {...p} img={steelImg} dotColor={SteelDice.border}/>; }
+}
+
+class BrokenDice extends DiceBase {
+  static type    = 'broken';
+  static name    = '고장난';
+  static rarity  = 'common';
+  static border  = '#AA44CC';
+  static bg      = '#CC88EE';
+  static target  = 'random';
+  static description = '고장난 주사위. 무작위 대상에게 피해를 입힙니다.';
+  static ability = { type: 'none' };
+  static stats   = { dmg: { base: 50, cP: 10, lP: 50 }, atkInt: { base: 0.9, cM: 0, lM: 0 } };
+  static extraStatDefs = [];
+  static render(p) { return <DiceImgBase {...p} img={brokenImg} dotColor={BrokenDice.border}/>; }
+}
+
+class GambleDice extends DiceBase {
+  static type    = 'gamble';
+  static name    = '도박';
+  static rarity  = 'common';
+  static border  = '#4422CC';
+  static bg      = '#8866EE';
+  static target  = 'first';
+  static description = '도박 피해를 입힙니다. 피해량이 7~777배 범위로 무작위 결정.';
+  static ability = { type: 'randomDmg' };
+  static stats   = { dmg: { base: 7, cP: 10, lP: 77 }, atkInt: { base: 1.0, cM: 0.01, lM: 0 } };
+  static extraStatDefs = [{ label: '피해 범위', fixed: '7~777배' }];
+  static render(p) { return <DiceImgBase {...p} img={gambleImg} dotColor={GambleDice.border}/>; }
+}
+
+class LockDice extends DiceBase {
+  static type    = 'lock';
+  static name    = '잠금';
+  static rarity  = 'common';
+  static border  = '#334488';
+  static bg      = '#667799';
+  static target  = 'first';
+  static description = '타겟을 일정 확률로 잠금하여 이동을 멈춥니다.';
+  static ability = { type: 'lock' };
+  static stats   = { dmg: { base: 30, cP: 5, lP: 20 }, atkInt: { base: 0.8, cM: 0.01, lM: 0 }, lockProb: { base: 4, cP: 1, lP: 2 }, lockDur: { base: 3, cP: 0.2, lP: 0.5 } };
+  static extraStatDefs = [{ label: '잠금 확률(%)', key: 'lockProb' }, { label: '잠금 시간(초)', key: 'lockDur' }];
+  static render(p) { return <DiceImgBase {...p} img={lockImg} dotColor={LockDice.border}/>; }
+}
+
+class WindDice extends DiceBase {
+  static type    = 'wind';
+  static name    = '바람';
+  static rarity  = 'common';
+  static border  = '#30C4A8';
+  static bg      = '#55DDCC';
+  static target  = 'first';
+  static description = '가장 빠른 적을 공격하며, 자신의 공격속도를 빠르게 유지합니다.';
+  static ability = { type: 'windBuff' };
+  static stats   = { dmg: { base: 20, cP: 3, lP: 15 }, atkInt: { base: 0.45, cM: 0, lM: 0 }, speedBuff: { base: 10, cP: 2, lP: 10 } };
+  static extraStatDefs = [{ label: '공속 버프(%)', key: 'speedBuff' }];
+  static render(p) { return <DiceImgBase {...p} img={windImg} dotColor={WindDice.border}/>; }
+}
+
+// ── 희귀 (Rare) ────────────────────────────────
+class GambleGrowthDice extends DiceBase {
+  static type     = 'gamblegrowth';
+  static name     = '도박성장';
+  static rarity   = 'rare';
+  static border   = '#BB8800';
+  static bg       = '#FFDD44';
+  static target   = 'first';
+  static minClass = 3;
+  static description = '시간이 지날수록 피해량이 증가하는 도박형 주사위입니다.';
+  static ability = { type: 'gamblegrowth' };
+  static stats   = { dmg: { base: 30, cP: 0, lP: 0 }, atkInt: { base: 1.0, cM: 0, lM: 0 }, growthTime: { base: 45, cM: 1, lM: 1 } };
+  static extraStatDefs = [{ label: '성장 시간(초)', key: 'growthTime' }];
+  static render(p) { return <DiceImgBase {...p} img={gamblegrowthImg} dotColor={GambleGrowthDice.border}/>; }
+}
+
+class LightDice extends DiceBase {
+  static type     = 'light';
+  static name     = '빛';
+  static rarity   = 'rare';
+  static border   = '#DDB800';
+  static bg       = '#FFFFD0';
+  static target   = 'none';
+  static minClass = 3;
+  static description = '공격하지 않고 주변 아군 주사위의 공격속도를 증가시킵니다.';
+  static ability = { type: 'lightAura' };
+  static stats   = { atkInt: { base: 9999 } };
+  static extraStatDefs = [{ label: '공속 오라', fixed: '주변 +15%' }];
+  static render(p) { return <DiceImgBase {...p} img={lightImg} dotColor={LightDice.border}/>; }
+}
+
+// ── 영웅 (Heroic) ──────────────────────────────
+class AdaptDice extends DiceBase {
+  static type     = 'adapt';
+  static name     = '적응';
+  static rarity   = 'heroic';
+  static border   = '#RAINBOW';
+  static bg       = '#FFFFFF';
+  static target   = 'first';
+  static minClass = 5;
+  static description = '주변에 배치된 주사위의 공격 타입을 복사하여 공격합니다.';
+  static ability = { type: 'adapt' };
+  static stats   = { dmg: { base: 20, cP: 5, lP: 10 }, atkInt: { base: 1.0, cM: 0, lM: 0 } };
+  static extraStatDefs = [{ label: '효과', fixed: '주변 타입 복사' }];
+  static render(p) { return <DiceImgBase {...p} img={adaptImg} dotColor="#FF8800"/>; }
+}
+
+// ── 전설 (Legendary) ───────────────────────────
+class JokerDice extends DiceBase {
+  static type     = 'joker';
+  static name     = '조커';
+  static rarity   = 'legendary';
+  static border   = '#RAINBOW';
+  static bg       = '#FFFFFF';
+  static target   = 'first';
+  static minClass = 7;
+  static description = '합성 시 어떤 타입과도 합성 가능한 만능 전설 주사위.';
+  static ability = { type: 'joker' };
+  static stats   = { dmg: { base: 40, cP: 5, lP: 10 }, atkInt: { base: 1.5, cM: 0, lM: 0 } };
+  static extraStatDefs = [{ label: '특수 효과', fixed: '만능 합성' }];
+  static render(p) { return <DiceImgBase {...p} img={jokerImg} dotColor="#FF8800" scale={1.25} imgDy={-p.size * 0.065}/>; }
+}
+
+class GrowthDice extends DiceBase {
+  static type     = 'growth';
+  static name     = '성장';
+  static rarity   = 'legendary';
+  static border   = '#7700CC';
+  static bg       = '#BB66FF';
+  static target   = 'first';
+  static minClass = 7;
+  static description = '시간이 지날수록 데미지가 지수적으로 증가합니다.';
+  static ability = { type: 'growth' };
+  static stats   = { dmg: { base: 10, cP: 5, lP: 10 }, atkInt: { base: 2.0, cM: 0, lM: 0 }, growthTime: { base: 21, cM: 1, lM: 0 } };
+  static extraStatDefs = [{ label: '성장 주기(초)', key: 'growthTime' }];
+  static render(p) { return <DiceImgBase {...p} img={growthImg} dotColor={GrowthDice.border} scale={1.25} imgDy={-p.size * 0.065}/>; }
+}
+
+// Sun inactive 전용 컴포넌트 (Hook 사용 가능)
+function SunSVGInactive({ size, dot }) {
+  const S=size, b="#886633";
+  const cx=S*.5, cy=S*.5;
+  const pts=[];
+  for(let i=0;i<12;i++){
+    const a=(i/12)*Math.PI*2 - Math.PI/2;
+    const r=i%2===0?S*.42:S*.28;
+    pts.push(`${(cx+r*Math.cos(a)).toFixed(2)},${(cy+r*Math.sin(a)).toFixed(2)}`);
+  }
+  return (
+    <DiceCardLegend size={S} borderColor={b}>
+      <polygon points={pts.join(" ")} fill={b} opacity="0.38"/>
+      <circle cx={cx} cy={cy} r={S*.22} fill={b} opacity="0.6"/>
+      <circle cx={cx} cy={cy} r={S*.13} fill={b} opacity="0.82"/>
+      <DotLayer dot={dot} color={b} size={S} legend={true}/>
+    </DiceCardLegend>
+  );
+}
+
+class SunDice extends DiceBase {
+  static type     = 'sun';
+  static name     = '태양';
+  static rarity   = 'legendary';
+  static border   = '#886633';
+  static bg       = '#DDAA66';
+  static target   = 'first';
+  static minClass = 7;
+  static description = '낮 시간대에 활성화되어 빠른 공격속도와 스플래시 피해를 발휘합니다.';
+  static ability = { type: 'sun', splashRadius: CELL * 0.9 };
+  static stats   = { dmg: { base: 40, cP: 5, lP: 11 }, atkInt: { base: 1.2, cM: 0, lM: 0 }, splashDmg: { base: 40, cP: 5, lP: 11 } };
+  static extraStatDefs = [{ label: '스플래시 피해', key: 'splashDmg' }, { label: '활성 조건', fixed: '낮 시간대' }];
+  static render({ size, dot, active }) {
+    if (active) return <DiceImgBase size={size} dot={dot} img={sunImg} dotColor="#DD5500" scale={1.25} imgDy={-size * 0.065}/>;
+    return <SunSVGInactive size={size} dot={dot}/>;
+  }
+}
+
+class ComboDice extends DiceBase {
+  static type     = 'combo';
+  static name     = '콤보';
+  static rarity   = 'legendary';
+  static border   = '#CC1188';
+  static bg       = '#FFDDEE';
+  static target   = 'first';
+  static minClass = 7;
+  static description = '연속 처치 시 콤보가 쌓이며 피해량이 배수로 증가합니다.';
+  static ability = { type: 'combo' };
+  static stats   = { dmg: { base: 50, cP: 10, lP: 10 }, atkInt: { base: 1.2, cM: 0, lM: 0 }, comboDmg: { base: 8, cP: 2, lP: 1 } };
+  static extraStatDefs = [{ label: '콤보 피해', key: 'comboDmg' }];
+  static render(p) { return <DiceImgBase {...p} img={comboImg} dotColor={ComboDice.border} scale={1.25} imgDy={-p.size * 0.065}/>; }
+}
+
+// Moon inactive 전용 컴포넌트 (Hook 사용 가능)
+function MoonSVGInactive({ size, dot, moonCount=0 }) {
+  const S=size, b='#888888';
+  const uidRef = useRef(`mn${_dcCtr++}`).current;
+  const cx=S*.5, cy=S*.5, rx=S*.2, pad=S*.1;
+  const phase = moonCount<=3?"crescent":moonCount<=5?"half":"full";
+  return (
+    <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
+      <defs>
+        <linearGradient id={`imn_${uidRef}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FFFFFF"/>
+          <stop offset="100%" stopColor="#F0F0F0"/>
+        </linearGradient>
+        <linearGradient id={`gmn_${uidRef}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"   stopColor="white" stopOpacity="0.0"/>
+          <stop offset="35%"  stopColor="white" stopOpacity="0.7"/>
+          <stop offset="52%"  stopColor="white" stopOpacity="0.7"/>
+          <stop offset="100%" stopColor="white" stopOpacity="0.0"/>
+        </linearGradient>
+        <filter id={`fmn_${uidRef}`} x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy={S*.025} stdDeviation={S*.04} floodColor="rgba(0,0,0,0.28)"/>
+        </filter>
+        <clipPath id={`cmn_${uidRef}`}>
+          <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*.65}/>
+        </clipPath>
+        {phase==="half" && (
+          <clipPath id={`hmn_${uidRef}`}>
+            <rect x={pad} y={pad} width={S*.5-pad} height={S-pad*2}/>
+          </clipPath>
+        )}
+      </defs>
+      <rect x="0" y="0" width={S} height={S} rx={rx} fill="#F2EED8" filter={`url(#fmn_${uidRef})`}/>
+      <GakNakBorder S={S} color={b}/>
+      <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*.65} fill={`url(#imn_${uidRef})`}/>
+      <g clipPath={`url(#cmn_${uidRef})`}>
+        {phase==="full" && <circle cx={cx} cy={cy} r={S*.28} fill={b} opacity="0.72"/>}
+        {phase==="half" && <circle cx={cx} cy={cy} r={S*.28} fill={b} opacity="0.72" clipPath={`url(#hmn_${uidRef})`}/>}
+        {phase==="crescent" && <>
+          <circle cx={cx} cy={cy} r={S*.28} fill={b} opacity="0.72"/>
+          <circle cx={cx+S*.17} cy={cy-S*.02} r={S*.25} fill="rgba(255,255,255,0.96)"/>
+        </>}
+        <DotLayer dot={dot} color={b} size={S} legend={true}/>
+      </g>
+      <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*.65} fill={`url(#gmn_${uidRef})`}/>
+    </svg>
+  );
+}
+
+class MoonDice extends DiceBase {
+  static type     = 'moon';
+  static name     = '달';
+  static rarity   = 'legendary';
+  static border   = '#888888';
+  static bg       = '#DDDDDD';
+  static target   = 'none';
+  static minClass = 7;
+  static description = '밤 시간대에 활성화되어 아군 공격력을 증폭시키는 오라를 발산합니다.';
+  static ability = { type: 'moonAura' };
+  static stats   = { atkInt: { base: 9999 } };
+  static extraStatDefs = [{ label: '활성 조건', fixed: '밤 시간대' }];
+  static render({ size, dot, active, moonCount=0 }) {
+    if (active) return <DiceImgBase size={size} dot={dot} img={moonImg} dotColor="#44AADD" scale={1.25} imgDy={-size*0.065}/>;
+    return <MoonSVGInactive size={size} dot={dot} moonCount={moonCount}/>;
+  }
+}
+
+class SummonDice extends DiceBase {
+  static type     = 'summon';
+  static name     = '소환';
+  static rarity   = 'legendary';
+  static border   = '#009944';
+  static bg       = '#88FFAA';
+  static target   = 'first';
+  static minClass = 7;
+  static description = '공격 명중 시 일정 확률로 빈 슬롯에 새 주사위를 소환합니다.';
+  static ability = { type: 'summon' };
+  static stats   = { dmg: { base: 10, cP: 10, lP: 10 }, atkInt: { base: 1.5, cM: 0, lM: 0 } };
+  static extraStatDefs = [{ label: '소환 조건', fixed: '명중 확률' }];
+  static render(p) { return <DiceImgBase {...p} img={summonImg} dotColor={SummonDice.border} scale={1.25} imgDy={-p.size * 0.065}/>; }
+}
+
+// ── Registry ────────────────────────────────────
+const DICE_CLASSES = [
+  FireDice, ElectricDice, PoisonDice, IceDice, SteelDice, BrokenDice,
+  GambleDice, LockDice, WindDice,
+  GambleGrowthDice, LightDice,
+  AdaptDice,
+  JokerDice, GrowthDice, SunDice, ComboDice, MoonDice, SummonDice,
+];
+const DICE_REGISTRY = Object.fromEntries(DICE_CLASSES.map(C => [C.type, C]));
+const DICE_KEYS = Object.keys(DICE_REGISTRY);
 const LV_COST = [100, 200, 400, 700];
 
-const DICE_RARITY = {
-  fire:'common', electric:'common', poison:'common', ice:'common',
-  steel:'common', broken:'common', gamble:'common', lock:'common', wind:'common',
-  gamblegrowth:'rare', light:'rare',
-  adapt:'heroic',
-  joker:'legendary', growth:'legendary', sun:'legendary',
-  combo:'legendary', moon:'legendary', summon:'legendary',
-};
 const RARITY_LABEL = { common:'일반', rare:'희귀', heroic:'영웅', legendary:'전설' };
 const RARITY_COLOR = { common:'#777', rare:'#3399FF', heroic:'#9944DD', legendary:'#E8A000' };
 const RARITY_ORDER = { legendary:0, heroic:1, rare:2, common:3 };
 const TARGET_LABEL = { first:'최전방', strongest:'최강', random:'랜덤', noPoison:'미중독', none:'없음(오라)' };
-
-const DICE_DESC = {
-  fire:         "불꽃을 발사해 타겟과 주변 적에게 스플래시 피해를 입힙니다.",
-  electric:     "번개를 발사해 최대 3개의 적에게 연쇄 피해를 입힙니다.",
-  poison:       "독침을 발사해 타겟에게 지속 독 피해를 입힙니다.",
-  ice:          "얼음 탄환을 발사해 적의 이동속도를 감소시킵니다. 최대 3스택.",
-  steel:        "강력한 포탄을 발사합니다. 보스 몬스터에게 추가 피해.",
-  broken:       "고장난 주사위. 무작위 대상에게 피해를 입힙니다.",
-  gamble:       "도박 피해를 입힙니다. 피해량이 7~777배 범위로 무작위 결정.",
-  lock:         "타겟을 일정 확률로 잠금하여 이동을 멈춥니다.",
-  wind:         "가장 빠른 적을 공격하며, 자신의 공격속도를 빠르게 유지합니다.",
-  gamblegrowth: "시간이 지날수록 피해량이 증가하는 도박형 주사위입니다.",
-  joker:        "합성 시 어떤 타입과도 합성 가능한 만능 전설 주사위.",
-  growth:       "시간이 지날수록 데미지가 지수적으로 증가합니다.",
-  light:        "공격하지 않고 주변 아군 주사위의 공격속도를 증가시킵니다.",
-  sun:          "낮 시간대에 활성화되어 빠른 공격속도와 스플래시 피해를 발휘합니다.",
-  combo:        "연속 처치 시 콤보가 쌓이며 피해량이 배수로 증가합니다.",
-  moon:         "밤 시간대에 활성화되어 아군 공격력을 증폭시키는 오라를 발산합니다.",
-  adapt:        "주변에 배치된 주사위의 공격 타입을 복사하여 공격합니다.",
-  summon:       "공격 명중 시 일정 확률로 빈 슬롯에 새 주사위를 소환합니다.",
-};
-
-const DICE_EXTRA_STATS = {
-  fire:        [{ label:'스플래시 피해', key:'splashDmg' }],
-  electric:    [{ label:'체인 수', fixed:'3개' }, { label:'체인 배율', fixed:'100/70/30%' }],
-  poison:      [{ label:'DoT 피해/초', key:'dotDps' }],
-  ice:         [{ label:'감속률(%)', key:'slowPct' }, { label:'최대 스택', fixed:'3' }],
-  steel:       [{ label:'보스 배율', fixed:'×2.0' }],
-  broken:      [],
-  gamble:      [{ label:'피해 범위', fixed:'7~777배' }],
-  lock:        [{ label:'잠금 확률(%)', key:'lockProb' }, { label:'잠금 시간(초)', key:'lockDur' }],
-  wind:        [{ label:'공속 버프(%)', key:'speedBuff' }],
-  gamblegrowth:[{ label:'성장 시간(초)', key:'growthTime' }],
-  joker:       [{ label:'특수 효과', fixed:'만능 합성' }],
-  growth:      [{ label:'성장 주기(초)', key:'growthTime' }],
-  light:       [{ label:'공속 오라', fixed:'주변 +15%' }],
-  sun:         [{ label:'스플래시 피해', key:'splashDmg' }, { label:'활성 조건', fixed:'낮 시간대' }],
-  combo:       [{ label:'콤보 피해', key:'comboDmg' }],
-  moon:        [{ label:'활성 조건', fixed:'밤 시간대' }],
-  adapt:       [{ label:'효과', fixed:'주변 타입 복사' }],
-  summon:      [{ label:'소환 조건', fixed:'명중 확률' }],
-};
 
 // ═══════════════════════════════════════════════════════════════
 //  SVG DICE
@@ -330,145 +593,9 @@ function DiceImgBase({ size, img, dotColor, dot, scale=1.1, imgDy=0 }) {
   );
 }
 
-function DiceFire({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={fireImg} dotColor={DICE_DEFS.fire.border} dot={dot}/>;
-}
-
-function DiceElectric({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={electricImg} dotColor={DICE_DEFS.electric.border} dot={dot}/>;
-}
-
-function DicePoison({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={poisonImg} dotColor={DICE_DEFS.poison.border} dot={dot}/>;
-}
-
-function DiceIce({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={iceImg} dotColor={DICE_DEFS.ice.border} dot={dot}/>;
-}
-
-function DiceSteel({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={steelImg} dotColor={DICE_DEFS.steel.border} dot={dot}/>;
-}
-
-function DiceBroken({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={brokenImg} dotColor={DICE_DEFS.broken.border} dot={dot}/>;
-}
-
-function DiceGamble({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={gambleImg} dotColor={DICE_DEFS.gamble.border} dot={dot}/>;
-}
-
-function DiceLock({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={lockImg} dotColor={DICE_DEFS.lock.border} dot={dot}/>;
-}
-
-function DiceWind({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={windImg} dotColor={DICE_DEFS.wind.border} dot={dot}/>;
-}
-
-function DiceGambleGrowth({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={gamblegrowthImg} dotColor={DICE_DEFS.gamblegrowth.border} dot={dot}/>;
-}
-
-function DiceJoker({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={jokerImg} dotColor="#FF8800" dot={dot} scale={1.25} imgDy={-size*0.065}/>;
-}
-
-function DiceGrowth({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={growthImg} dotColor={DICE_DEFS.growth.border} dot={dot} scale={1.25} imgDy={-size*0.065}/>;
-}
-
-function DiceLight({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={lightImg} dotColor={DICE_DEFS.light.border} dot={dot}/>;
-}
-
-function DiceSun({ size=60, dot=1, active=false }) {
-  if (active) {
-    return <DiceImgBase size={size} img={sunImg} dotColor="#DD5500" dot={dot} scale={1.25} imgDy={-size*0.065}/>;
-  }
-  const S=size, b="#886633";
-  const cx=S*.5, cy=S*.5;
-  const pts=[];
-  for(let i=0;i<12;i++){
-    const a=(i/12)*Math.PI*2 - Math.PI/2;
-    const r=i%2===0?S*.42:S*.28;
-    pts.push(`${(cx+r*Math.cos(a)).toFixed(2)},${(cy+r*Math.sin(a)).toFixed(2)}`);
-  }
-  return (
-    <DiceCardLegend size={S} borderColor={b}>
-      <polygon points={pts.join(" ")} fill={b} opacity="0.38"/>
-      <circle cx={cx} cy={cy} r={S*.22} fill={b} opacity="0.6"/>
-      <circle cx={cx} cy={cy} r={S*.13} fill={b} opacity="0.82"/>
-      <DotLayer dot={dot} color={b} size={S} legend={true}/>
-    </DiceCardLegend>
-  );
-}
-
-function DiceCombo({ size=60, dot=1, comboCount=0 }) {
-  return <DiceImgBase size={size} img={comboImg} dotColor="#CC1188" dot={dot} scale={1.25} imgDy={-size*0.065}/>;
-}
-
-function DiceMoon({ size=60, dot=1, active=false, moonCount=0 }) {
-  if (active) {
-    return <DiceImgBase size={size} img={moonImg} dotColor="#44AADD" dot={dot} scale={1.25} imgDy={-size*0.065}/>;
-  }
-  const S=size, b="#888888";
-  const uidRef = useRef(`mn${_dcCtr++}`).current;
-  const cx=S*.5, cy=S*.5, rx=S*.2, pad=S*.1;
-  const phase = moonCount<=3?"crescent":moonCount<=5?"half":"full";
-  return (
-    <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
-      <defs>
-        <linearGradient id={`imn_${uidRef}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FFFFFF"/>
-          <stop offset="100%" stopColor="#F0F0F0"/>
-        </linearGradient>
-        <linearGradient id={`gmn_${uidRef}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%"   stopColor="white" stopOpacity="0.0"/>
-          <stop offset="35%"  stopColor="white" stopOpacity="0.7"/>
-          <stop offset="52%"  stopColor="white" stopOpacity="0.7"/>
-          <stop offset="100%" stopColor="white" stopOpacity="0.0"/>
-        </linearGradient>
-        <filter id={`fmn_${uidRef}`} x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy={S*.025} stdDeviation={S*.04} floodColor="rgba(0,0,0,0.28)"/>
-        </filter>
-        <clipPath id={`cmn_${uidRef}`}>
-          <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*.65}/>
-        </clipPath>
-        {phase==="half" && (
-          <clipPath id={`hmn_${uidRef}`}>
-            <rect x={pad} y={pad} width={S*.5-pad} height={S-pad*2}/>
-          </clipPath>
-        )}
-      </defs>
-      <rect x="0" y="0" width={S} height={S} rx={rx} fill="#F2EED8" filter={`url(#fmn_${uidRef})`}/>
-      <GakNakBorder S={S} color={b}/>
-      <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*.65} fill={`url(#imn_${uidRef})`}/>
-      <g clipPath={`url(#cmn_${uidRef})`}>
-        {phase==="full" && <circle cx={cx} cy={cy} r={S*.28} fill={b} opacity="0.72"/>}
-        {phase==="half" && <circle cx={cx} cy={cy} r={S*.28} fill={b} opacity="0.72" clipPath={`url(#hmn_${uidRef})`}/>}
-        {phase==="crescent" && <>
-          <circle cx={cx} cy={cy} r={S*.28} fill={b} opacity="0.72"/>
-          <circle cx={cx+S*.17} cy={cy-S*.02} r={S*.25} fill="rgba(255,255,255,0.96)"/>
-        </>}
-        <DotLayer dot={dot} color={b} size={S} legend={true}/>
-      </g>
-      <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*.65} fill={`url(#gmn_${uidRef})`}/>
-    </svg>
-  );
-}
-
-function DiceAdapt({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={adaptImg} dotColor="#FF8800" dot={dot}/>;
-}
-
-function DiceSummon({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={summonImg} dotColor={DICE_DEFS.summon.border} dot={dot} scale={1.25} imgDy={-size*0.065}/>;
-}
-
-const DICE_SVG = { fire:DiceFire, electric:DiceElectric, poison:DicePoison, ice:DiceIce, steel:DiceSteel, broken:DiceBroken, gamble:DiceGamble, lock:DiceLock, wind:DiceWind, gamblegrowth:DiceGambleGrowth, joker:DiceJoker, growth:DiceGrowth, light:DiceLight, sun:DiceSun, combo:DiceCombo, moon:DiceMoon, adapt:DiceAdapt, summon:DiceSummon };
 function DiceSVG({ type, dot=1, size=56, active=false, comboCount=0, moonCount=0 }) {
-  const C = DICE_SVG[type]; return C ? <C size={size} dot={dot} active={active} comboCount={comboCount} moonCount={moonCount}/> : null;
+  const DC = DICE_REGISTRY[type];
+  return DC ? DC.render({ size, dot, active, comboCount, moonCount }) : null;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -494,7 +621,7 @@ function getStat(s, classLv, ingameLv) {
                + (ingameLv-1)*(s.lP||0) - (ingameLv-1)*(s.lM||0);
 }
 function getSelfSpeedBuff(d, classLv, ingameLv) {
-  const def = DICE_DEFS[d.type];
+  const def = DICE_REGISTRY[d.type];
   if (!def.stats.speedBuff) return 0;
   return Math.min(getStat(def.stats.speedBuff, classLv, ingameLv) / 100, 0.95);
 }
@@ -542,7 +669,7 @@ function spawnEnemy(monType, wave, timeInWave=0) {
 function makePlayer(id, deck, rawClassLevels = {}, critMult = 2) {
   // minClass 미만으로 설정된 값은 minClass로 올려줌
   const classLevels = Object.fromEntries(
-    deck.map(t => [t, Math.max(rawClassLevels[t]||1, DICE_DEFS[t]?.minClass||1)])
+    deck.map(t => [t, Math.max(rawClassLevels[t]||1, DICE_REGISTRY[t]?.minClass||1)])
   );
   return {
     id, deck, sp: 100, summonCost: 10, hearts: 3,
@@ -564,7 +691,7 @@ function makePlayer(id, deck, rawClassLevels = {}, critMult = 2) {
 }
 
 function makeDice(type, dot, ingameLv, classLv) {
-  const def = DICE_DEFS[type];
+  const def = DICE_REGISTRY[type];
   const startDot = (dot !== undefined) ? dot : 1;
   const lvl = ingameLv || 1;
   const clvl = classLv || 1;
@@ -595,7 +722,7 @@ function dealDmg(p, e, dmg) {
 }
 
 function applyHit(p, proj, tgt) {
-  const def = DICE_DEFS[proj.diceType], ab = def.ability;
+  const def = DICE_REGISTRY[proj.diceType], ab = def.ability;
   let dmg = proj.dmg;
   if (ab.type === "bossKiller" && tgt.isBoss) dmg *= ab.mult;
   if (ab.type === "randomDmg") {
@@ -724,7 +851,7 @@ function tickPlayer(p, dt, onKill) {
   for (const [lk, ld] of Object.entries(p.dice)) {
     if (!ld || ld.type !== "light") continue;
     const llv = p.diceLevels["light"] || 1;
-    const lclv = (p.classLevels?.["light"]) || (DICE_DEFS.light.minClass||3);
+    const lclv = (p.classLevels?.["light"]) || (DICE_REGISTRY["light"].minClass||3);
     const lbPct = ld.dot * (6 + (lclv-1)*0.3) + (llv-1)*1;
     const [lc, lr] = lk.split(",").map(Number);
     for (const [nc, nr] of [[lc-1,lr],[lc+1,lr],[lc,lr-1],[lc,lr+1]]) {
@@ -743,7 +870,7 @@ function tickPlayer(p, dt, onKill) {
   for (const [mk, md] of Object.entries(p.dice)) {
     if (!md || md.type !== "moon") continue;
     const mlv  = p.diceLevels["moon"] || 1;
-    const mclv = (p.classLevels?.["moon"]) || (DICE_DEFS.moon.minClass||7);
+    const mclv = (p.classLevels?.["moon"]) || (DICE_REGISTRY["moon"].minClass||7);
     const mbPct = md.dot * (7 + (mclv-1)*1) + (mlv-1)*2;
     const [mc, mr] = mk.split(",").map(Number);
     for (const [nc, nr] of [[mc-1,mr],[mc+1,mr],[mc,mr-1],[mc,mr+1]]) {
@@ -758,7 +885,7 @@ function tickPlayer(p, dt, onKill) {
   for (const [key, d] of Object.entries(p.dice)) {
     if (!d) continue;
     d.cd -= dt; if (d.cd > 0) continue;
-    const def = DICE_DEFS[d.type];
+    const def = DICE_REGISTRY[d.type];
     // 빛/달 주사위: 공격 없음, CD만 리셋
     if (def.ability.type === "lightAura" || def.ability.type === "moonAura") { d.cd = 1.0; continue; }
     const {x:cx, y:cy} = cellXY(...key.split(",").map(Number));
@@ -831,7 +958,7 @@ function tickPlayer(p, dt, onKill) {
   // 성장/도박성장 타이머
   for (const [key, d] of Object.entries(p.dice)) {
     if (!d) continue;
-    const def = DICE_DEFS[d.type];
+    const def = DICE_REGISTRY[d.type];
     const ab = def.ability.type;
     if (ab !== "gamblegrowth" && ab !== "growth") continue;
     const gcl = (p.classLevels||{})[d.type]||1;
@@ -1058,7 +1185,7 @@ function HUD({ p, pid, accent, onSummon, onLevelUp }) {
   const canSummon = p.sp >= p.summonCost;
 
   const diceList = p.deck.map(type => {
-    const def = DICE_DEFS[type];
+    const def = DICE_REGISTRY[type];
     const onBoard = Object.values(p.dice).filter(d => d && d.type === type).length;
     const curLevel = p.diceLevels[type] || 1;
     const allMax = curLevel >= 5;
@@ -1177,7 +1304,7 @@ function InventoryScreen({ player, deck, setDeck, inventory, onClose }) {
   const accent = player === 0 ? "#3355EE" : "#EE3355";
   const pLabel = player === 0 ? "P1" : "P2";
 
-  const sortedKeys = [...DICE_KEYS].sort((a, b) => RARITY_ORDER[DICE_RARITY[a]] - RARITY_ORDER[DICE_RARITY[b]]);
+  const sortedKeys = [...DICE_KEYS].sort((a, b) => RARITY_ORDER[DICE_REGISTRY[a]?.rarity] - RARITY_ORDER[DICE_REGISTRY[b]?.rarity]);
 
   const toggleDeck = type => {
     if (deck.includes(type)) setDeck(deck.filter(x => x !== type));
@@ -1185,7 +1312,7 @@ function InventoryScreen({ player, deck, setDeck, inventory, onClose }) {
   };
 
   const statVal = (statKey, clv, plv) => {
-    const def = DICE_DEFS[selected];
+    const def = DICE_REGISTRY[selected];
     if (!def?.stats[statKey]) return '-';
     const v = getStat(def.stats[statKey], clv, plv);
     return Number.isInteger(v) ? String(v) : v.toFixed(1);
@@ -1193,13 +1320,13 @@ function InventoryScreen({ player, deck, setDeck, inventory, onClose }) {
 
   const buildRows = () => {
     if (!selected) return [];
-    const def = DICE_DEFS[selected];
+    const def = DICE_REGISTRY[selected];
     const clv = statClass, plv = statPower;
     const atkInt = getStat(def.stats.atkInt, clv, plv);
     const atkSpd = atkInt >= 9999 ? '오라' : (1 / Math.max(atkInt, 0.05)).toFixed(2) + '/s';
     const dmg = def.stats.dmg ? statVal('dmg', clv, plv) : '-';
     const target = TARGET_LABEL[def.target] || def.target;
-    const extras = [...(DICE_EXTRA_STATS[selected] || []), null, null, null].slice(0, 3).map(e => {
+    const extras = [...(DICE_REGISTRY[selected]?.extraStatDefs || []), null, null, null].slice(0, 3).map(e => {
       if (!e) return { label: '-', value: '-' };
       if (e.fixed) return { label: e.label, value: e.fixed };
       return { label: e.label, value: statVal(e.key, clv, plv) };
@@ -1211,7 +1338,7 @@ function InventoryScreen({ player, deck, setDeck, inventory, onClose }) {
     ];
   };
 
-  const def = selected ? DICE_DEFS[selected] : null;
+  const def = selected ? DICE_REGISTRY[selected] : null;
   const b = def ? (def.border === '#RAINBOW' ? '#AA00AA' : def.border) : '#888';
   const inDeck = selected ? deck.includes(selected) : false;
   const rows = buildRows();
@@ -1232,7 +1359,7 @@ function InventoryScreen({ player, deck, setDeck, inventory, onClose }) {
           <span style={{ fontSize: 11, fontWeight: 800, color: '#667', marginRight: 4 }}>덱 ({deck.length}/5)</span>
           {Array.from({ length: 5 }, (_, i) => {
             const t = deck[i];
-            const dd = t ? DICE_DEFS[t] : null;
+            const dd = t ? DICE_REGISTRY[t] : null;
             return (
               <div key={i} onClick={() => t && setSelected(t)}
                 style={{ width: 54, height: 54, borderRadius: 10, border: t ? `2px solid ${dd?.border === '#RAINBOW' ? '#AA00AA' : dd?.border || '#ccc'}` : '2px dashed #ccc', background: t ? '#fff' : '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: t ? 'pointer' : 'default', position: 'relative', flexShrink: 0 }}>
@@ -1253,7 +1380,7 @@ function InventoryScreen({ player, deck, setDeck, inventory, onClose }) {
           {/* Dice grid */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
             {['legendary', 'heroic', 'rare', 'common'].map(rarity => {
-              const group = sortedKeys.filter(k => DICE_RARITY[k] === rarity);
+              const group = sortedKeys.filter(k => DICE_REGISTRY[k]?.rarity === rarity);
               if (!group.length) return null;
               return (
                 <div key={rarity} style={{ marginBottom: 14 }}>
@@ -1262,7 +1389,7 @@ function InventoryScreen({ player, deck, setDeck, inventory, onClose }) {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 7 }}>
                     {group.map(k => {
-                      const d = DICE_DEFS[k];
+                      const d = DICE_REGISTRY[k];
                       const isSel = selected === k;
                       const isIn = deck.includes(k);
                       const bc = d.border === '#RAINBOW' ? '#AA00AA' : d.border;
@@ -1290,14 +1417,14 @@ function InventoryScreen({ player, deck, setDeck, inventory, onClose }) {
               <div style={{ display: 'flex', gap: 10 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
                   <DiceSVG type={selected} dot={4} size={72} />
-                  <div style={{ fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 5, background: RARITY_COLOR[DICE_RARITY[selected]] + '22', color: RARITY_COLOR[DICE_RARITY[selected]] }}>
-                    {RARITY_LABEL[DICE_RARITY[selected]]}
+                  <div style={{ fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 5, background: RARITY_COLOR[DICE_REGISTRY[selected]?.rarity] + '22', color: RARITY_COLOR[DICE_REGISTRY[selected]?.rarity] }}>
+                    {RARITY_LABEL[DICE_REGISTRY[selected]?.rarity]}
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 900, color: b }}>{def.name}</div>
                   <div style={{ fontSize: 10, color: '#888' }}>보유 {inventory[selected] || 0}개</div>
                 </div>
                 <div style={{ flex: 1, fontSize: 11, color: '#445', lineHeight: 1.75, paddingTop: 2 }}>
-                  {DICE_DESC[selected] || '-'}
+                  {DICE_REGISTRY[selected]?.description || '-'}
                 </div>
               </div>
 
@@ -1368,7 +1495,7 @@ function DeckPanel({ label, deck, setDeck, accent, classLevels, setClass, critMu
       <div style={{fontWeight:800,color:accent,marginBottom:10,fontSize:14}}>{label} ({deck.length}/5)</div>
       <button onClick={onInvOpen} style={{fontSize:11,padding:'3px 10px',background:accent,border:'none',color:'#fff',borderRadius:6,cursor:'pointer',fontWeight:700,marginLeft:'auto',display:'block',marginBottom:8}}>📦 인벤토리</button>
       {DICE_KEYS.map(k=>{
-        const d=DICE_DEFS[k]; const sel=deck.includes(k);
+        const d=DICE_REGISTRY[k]; const sel=deck.includes(k);
         return (
           <div key={k} onClick={()=>toggle(k)} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",marginBottom:4,background:sel?`${d.border}14`:"#F8F9FF",border:sel?`1.5px solid ${d.border}`:"1.5px solid #E8ECF8",borderRadius:9,cursor:"pointer",transition:"all .12s"}}>
             <DiceSVG type={k} dot={3} size={42}/>
