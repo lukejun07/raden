@@ -123,7 +123,7 @@ const DOT_LAYOUTS = {
   7:"star",
 };
 
-function StarDot({ size, color }) {
+function StarDot({ size, color, legend=false }) {
   const S = size;
   const cx = S/2, cy = S/2, R = S*0.28, r = S*0.12;
   const pts = [];
@@ -134,12 +134,14 @@ function StarDot({ size, color }) {
   }
   return (
     <polygon points={pts.join(" ")} fill={color}
+      stroke={legend ? "rgba(255,255,255,0.7)" : "none"}
+      strokeWidth={legend ? S*0.025 : 0}
       style={{ filter: `drop-shadow(0 0 ${S*0.04}px rgba(0,0,0,0.4))` }} />
   );
 }
 
-function DotLayer({ dot, color, size }) {
-  if (dot === 7) return <StarDot size={size} color={color} />;
+function DotLayer({ dot, color, size, legend=false }) {
+  if (dot === 7) return <StarDot size={size} color={color} legend={legend}/>;
   const pos = DOT_LAYOUTS[dot] || DOT_LAYOUTS[1];
   const r = size * (dot <= 2 ? 0.075 : dot <= 4 ? 0.068 : 0.06);
   return (
@@ -147,7 +149,9 @@ function DotLayer({ dot, color, size }) {
       {pos.map(([px, py], i) => (
         <circle key={i}
           cx={(px / 100) * size} cy={(py / 100) * size} r={r}
-          fill="#222"
+          fill={color}
+          stroke={legend ? "rgba(255,255,255,0.72)" : "none"}
+          strokeWidth={legend ? r * 0.5 : 0}
           style={{ filter: `drop-shadow(0 ${size*0.012}px ${size*0.02}px rgba(0,0,0,0.25))` }}
         />
       ))}
@@ -194,21 +198,19 @@ function DiceCard({ size, border, children }) {
   );
 }
 
-function GakNakBorder({ S }) {
-  const arm = S * 0.44, sw = S * 0.078, dc = "#C8A000", h = sw / 2;
-  // ㄱ: 우측상단 꺾쇠 (상단 수평 + 우측 수직)
+function GakNakBorder({ S, color="#C8A000" }) {
+  const arm = S * 0.44, sw = S * 0.078, h = sw / 2;
   const gPath = `M${S - arm},${h} L${S - h},${h} L${S - h},${arm}`;
-  // ㄴ: 좌측하단 꺾쇠 (좌측 수직 + 하단 수평)
   const nPath = `M${h},${S - arm} L${h},${S - h} L${arm},${S - h}`;
   return (
     <>
-      <path d={gPath} fill="none" stroke={dc} strokeWidth={sw} strokeLinecap="square" strokeLinejoin="miter" opacity="0.95"/>
-      <path d={nPath} fill="none" stroke={dc} strokeWidth={sw} strokeLinecap="square" strokeLinejoin="miter" opacity="0.95"/>
+      <path d={gPath} fill="none" stroke={color} strokeWidth={sw} strokeLinecap="square" strokeLinejoin="miter" opacity="0.95"/>
+      <path d={nPath} fill="none" stroke={color} strokeWidth={sw} strokeLinecap="square" strokeLinejoin="miter" opacity="0.95"/>
     </>
   );
 }
 
-function DiceCardLegend({ size, children }) {
+function DiceCardLegend({ size, borderColor="#C8A000", children }) {
   const uid = useRef(`dcl${_dcCtr++}`).current;
   const S = size, rx = S * 0.2, pad = S * 0.1;
   return (
@@ -232,7 +234,7 @@ function DiceCardLegend({ size, children }) {
         </clipPath>
       </defs>
       <rect x="0" y="0" width={S} height={S} rx={rx} fill="#F2EED8" filter={`url(#sh_${uid})`}/>
-      <GakNakBorder S={S}/>
+      <GakNakBorder S={S} color={borderColor}/>
       <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65}
         fill={`url(#inner_${uid})`}/>
       <g clipPath={`url(#clip_${uid})`}>
@@ -418,7 +420,7 @@ function DiceJoker({ size=60, dot=1 }) {
   return (
     <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
       <defs>
-        <linearGradient id={`rbow_${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`rbow_${uid}`} x1="0" y1="0" x2={S} y2={S} gradientUnits="userSpaceOnUse">
           {rainbowStops.map((c,i)=><stop key={i} offset={`${i*100/6}%`} stopColor={c}/>)}
         </linearGradient>
         <linearGradient id={`glimj_${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -435,13 +437,13 @@ function DiceJoker({ size=60, dot=1 }) {
         </clipPath>
       </defs>
       <rect x="0" y="0" width={S} height={S} rx={rx} fill="#F2EED8" filter={`url(#shj_${uid})`}/>
-      <GakNakBorder S={S}/>
+      <GakNakBorder S={S} color={`url(#rbow_${uid})`}/>
       <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65} fill="#FFFFFF"/>
       <g clipPath={`url(#clipj_${uid})`}>
         <text x={S*.5} y={S*.47} textAnchor="middle" dominantBaseline="middle"
           fontSize={S*.55} fontWeight="900" fill={`url(#rbow_${uid})`} opacity="0.85"
           style={{fontFamily:"Arial Black,Arial,sans-serif"}}>∞</text>
-        <DotLayer dot={dot} color="#888" size={S}/>
+        <DotLayer dot={dot} color={`url(#rbow_${uid})`} size={S} legend={true}/>
       </g>
       <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65} fill={`url(#glimj_${uid})`}/>
     </svg>
@@ -452,13 +454,13 @@ function DiceGrowth({ size=60, dot=1 }) {
   const S=size, b="#7700CC";
   const bars=[[S*.15,S*.76,S*.15,S*.18],[S*.38,S*.76,S*.15,S*.34],[S*.61,S*.76,S*.15,S*.5]];
   return (
-    <DiceCardLegend size={S}>
+    <DiceCardLegend size={S} borderColor={b}>
       {bars.map(([x,y,w,h],i)=>(
         <rect key={i} x={x} y={y-h} width={w} height={h} rx={S*.02} fill={b} opacity={0.3+i*.12}/>
       ))}
       <path d={`M${S*.5},${S*.09} L${S*.5},${S*.52} M${S*.34},${S*.24} L${S*.5},${S*.09} L${S*.66},${S*.24}`}
         fill="none" stroke={b} strokeWidth={S*.048} strokeLinecap="round" strokeLinejoin="round" opacity="0.62"/>
-      <DotLayer dot={dot} color={b} size={S}/>
+      <DotLayer dot={dot} color={b} size={S} legend={true}/>
     </DiceCardLegend>
   );
 }
@@ -492,11 +494,11 @@ function DiceSun({ size=60, dot=1, active=false }) {
     pts.push(`${(cx+r*Math.cos(a)).toFixed(2)},${(cy+r*Math.sin(a)).toFixed(2)}`);
   }
   return (
-    <DiceCardLegend size={S}>
+    <DiceCardLegend size={S} borderColor={b}>
       <polygon points={pts.join(" ")} fill={b} opacity="0.38"/>
       <circle cx={cx} cy={cy} r={S*.22} fill={b} opacity="0.6"/>
       <circle cx={cx} cy={cy} r={S*.13} fill={b} opacity="0.82"/>
-      <DotLayer dot={dot} color={b} size={S}/>
+      <DotLayer dot={dot} color={b} size={S} legend={true}/>
     </DiceCardLegend>
   );
 }
@@ -506,12 +508,12 @@ function DiceCombo({ size=60, dot=1, comboCount=0 }) {
   const digits = String(comboCount).length;
   const fs = digits >= 4 ? S*.32 : digits === 3 ? S*.4 : digits === 2 ? S*.52 : S*.68;
   return (
-    <DiceCardLegend size={S}>
+    <DiceCardLegend size={S} borderColor={b}>
       <text x={S*.5} y={S*.43} textAnchor="middle" dominantBaseline="middle"
         fontSize={fs} fontWeight="900" fill={b} opacity="0.45"
         textLength={S*0.78} lengthAdjust="spacingAndGlyphs"
         style={{fontFamily:"Arial Black,Arial,sans-serif"}}>{comboCount}</text>
-      <DotLayer dot={dot} color={b} size={S}/>
+      <DotLayer dot={dot} color={b} size={S} legend={true}/>
     </DiceCardLegend>
   );
 }
@@ -548,7 +550,7 @@ function DiceMoon({ size=60, dot=1, active=false, moonCount=0 }) {
         )}
       </defs>
       <rect x="0" y="0" width={S} height={S} rx={rx} fill="#F2EED8" filter={`url(#fmn_${uidRef})`}/>
-      <GakNakBorder S={S}/>
+      <GakNakBorder S={S} color={b}/>
       <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*.65} fill={`url(#imn_${uidRef})`}/>
       <g clipPath={`url(#cmn_${uidRef})`}>
         {phase==="full" && <circle cx={cx} cy={cy} r={S*.28} fill={b} opacity="0.72"/>}
@@ -557,7 +559,7 @@ function DiceMoon({ size=60, dot=1, active=false, moonCount=0 }) {
           <circle cx={cx} cy={cy} r={S*.28} fill={b} opacity="0.72"/>
           <circle cx={cx+S*.17} cy={cy-S*.02} r={S*.25} fill="rgba(255,255,255,0.96)"/>
         </>}
-        <DotLayer dot={dot} color={b} size={S}/>
+        <DotLayer dot={dot} color={b} size={S} legend={true}/>
       </g>
       <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*.65} fill={`url(#gmn_${uidRef})`}/>
     </svg>
@@ -574,7 +576,7 @@ function DiceAdapt({ size=60, dot=1 }) {
   return (
     <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
       <defs>
-        <linearGradient id={`rbowa_${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`rbowa_${uid}`} x1="0" y1="0" x2={S} y2={S} gradientUnits="userSpaceOnUse">
           {rainbowStops.map((c,i)=><stop key={i} offset={`${i*100/6}%`} stopColor={c}/>)}
         </linearGradient>
         <linearGradient id={`glima_${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -595,7 +597,7 @@ function DiceAdapt({ size=60, dot=1 }) {
       <g clipPath={`url(#clipa_${uid})`}>
         <path d={inf} fill={`url(#rbowa_${uid})`} opacity="0.25"/>
         <path d={inf} fill="none" stroke={`url(#rbowa_${uid})`} strokeWidth={S*.045} strokeLinecap="round" opacity="0.72"/>
-        <DotLayer dot={dot} color="#888" size={S}/>
+        <DotLayer dot={dot} color={`url(#rbowa_${uid})`} size={S}/>
       </g>
       <rect x={pad} y={pad} width={S-pad*2} height={S-pad*2} rx={rx*0.65} fill={`url(#glima_${uid})`}/>
     </svg>
@@ -611,12 +613,12 @@ function DiceSummon({ size=60, dot=1 }) {
   });
   const starPts = [0,2,4,1,3,0].map(i=>`${pPts[i][0].toFixed(2)},${pPts[i][1].toFixed(2)}`).join(" ");
   return (
-    <DiceCardLegend size={S}>
+    <DiceCardLegend size={S} borderColor={b}>
       <circle cx={cx} cy={cy} r={S*.32} fill="none" stroke={b} strokeWidth={S*.022} opacity="0.38"/>
       <circle cx={cx} cy={cy} r={S*.24} fill="none" stroke={b} strokeWidth={S*.018} opacity="0.48"/>
       <polyline points={starPts} fill="none" stroke={b} strokeWidth={S*.032} strokeLinejoin="round" opacity="0.58"/>
       <circle cx={cx} cy={cy} r={S*.09} fill={b} opacity="0.68"/>
-      <DotLayer dot={dot} color={b} size={S}/>
+      <DotLayer dot={dot} color={b} size={S} legend={true}/>
     </DiceCardLegend>
   );
 }
@@ -657,7 +659,7 @@ function getSelfSpeedBuff(d, classLv, ingameLv) {
 function addDiceAnim(p, key, type) {
   if (!p.animations) p.animations = [];
   p.animations = p.animations.filter(a => a.key !== key);
-  p.animations.push({ key, type, progress: 0, duration: 0.22 });
+  p.animations.push({ key, type, progress: 0, duration: 0.1 });
 }
 
 function monSPReward(monType, wave) {
@@ -666,15 +668,19 @@ function monSPReward(monType, wave) {
   return wave * 10;
 }
 
-function calcBaseHP(wave) {
-  return 100 * Math.pow(2, wave - 1);
+function calcBaseHP(wave, timeInWave=0) {
+  const t = Math.min(Math.max(timeInWave, 0) / 90, 1);
+  const startHp = Math.pow(10, wave + 1);
+  const endHp   = Math.pow(10, wave + 2);
+  return startHp + (endHp - startHp) * t;
 }
 
-function spawnEnemy(monType, wave) {
+function spawnEnemy(monType, wave, timeInWave=0) {
   const ms = MON_SPECS[monType];
-  const base = calcBaseHP(wave);
-  const hp = monType === "big"  ? base * 4
-            : monType === "boss" ? base * 20
+  const base = calcBaseHP(wave, timeInWave);
+  const hp = monType === "big"   ? base * 4
+            : monType === "boss"  ? 25000 * wave
+            : monType === "speed" ? base * 0.6
             : base;
   const isDeath = wave >= 7, isFury = wave >= 11;
   const sm = (isDeath ? 1.35 : 1) * (isFury ? 1.3 : 1);
@@ -702,13 +708,15 @@ function makePlayer(id, deck, rawClassLevels = {}, critMult = 2) {
     dead: false,
     gameTime: 0, nextBossTime: 90,
     bigTimer: 20,
-    killsInInterval: 0, totalKills: 0,
+    totalKills: 0,
     animations: [],
+    spawnQueue: [],    // 상대로부터 받은 스폰 대기열
+    summonPending: [], // 소환주사위 지연 생성 목록
     bossRound: false,
-    comboCount: 0,    // 콤보주사위 합성 카운트
-    diceLevels: {},   // 인게임 파워업 레벨 { type: 1~5 }
-    classLevels,      // 덱 빌더에서 설정한 클래스 레벨 { type: number }
-    critMult,         // 크리티컬 배율 (2~5)
+    comboCount: 0,
+    diceLevels: {},
+    classLevels,
+    critMult,
   };
 }
 
@@ -816,21 +824,23 @@ function applyHit(p, proj, tgt) {
 
 function tickPlayer(p, dt, onKill) {
   p.gameTime += dt;
+  const timeInWave = Math.max(0, p.gameTime - (p.nextBossTime - 90));
 
   // 보스 라운드 진입
   if (!p.bossRound && p.gameTime >= p.nextBossTime) {
     const bonusHp = p.enemies.reduce((s, e) => s + Math.max(0, e.hp), 0) * 0.5;
-    const boss = spawnEnemy("boss", p.wave);
+    const boss = spawnEnemy("boss", p.wave, 0);
     boss.hp += bonusHp; boss.maxHp = boss.hp;
     p.enemies = [boss];
     p.bossRound = true;
+    p.spawnQueue = []; // 보스 라운드 진입 시 대기열 초기화
   }
 
   // 보스 라운드가 아닐 때만 뚱몹 스폰 (20초마다)
   if (!p.bossRound) {
     p.bigTimer -= dt;
     if (p.bigTimer <= 0) {
-      p.enemies.push(spawnEnemy("big", p.wave));
+      p.enemies.push(spawnEnemy("big", p.wave, timeInWave));
       p.bigTimer = 20;
     }
   }
@@ -1006,6 +1016,23 @@ function tickPlayer(p, dt, onKill) {
       .map(a => ({...a, progress: a.progress + dt}))
       .filter(a => a.progress < a.duration);
   }
+
+  // 소환주사위 지연 생성
+  if (p.summonPending?.length) {
+    const stillPending = [];
+    for (const ps of p.summonPending) {
+      ps.delay -= dt;
+      if (ps.delay <= 0) {
+        if (!p.dice[ps.key]) {
+          p.dice[ps.key] = makeDice(ps.type, ps.dot, ps.lv, ps.clv);
+          addDiceAnim(p, ps.key, "spawn");
+        }
+      } else {
+        stillPending.push(ps);
+      }
+    }
+    p.summonPending = stillPending;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1143,15 +1170,12 @@ function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, 
       })}
 
       {/* 투사체 */}
-      {p.projs.map(pr=>{
-        const isLegend = (DICE_DEFS[pr.diceType]?.minClass||1) >= 7;
-        return (
-          <div key={pr.id} style={{position:"absolute",left:pr.x-4,top:pr.y-4,width:8,height:8,
-            background:pr.color,borderRadius:"50%",
-            boxShadow:`0 0 6px ${pr.color}${isLegend?", 0 0 0 2px rgba(255,255,255,0.85)":""}`,
-            pointerEvents:"none",zIndex:25}}/>
-        );
-      })}
+      {p.projs.map(pr=>(
+        <div key={pr.id} style={{position:"absolute",left:pr.x-4,top:pr.y-4,width:8,height:8,
+          background:pr.color,borderRadius:"50%",
+          boxShadow:`0 0 6px ${pr.color}`,
+          pointerEvents:"none",zIndex:25}}/>
+      ))}
 
       {/* 이펙트 */}
       {p.effects.map(ef=>{
@@ -1164,8 +1188,10 @@ function GameBoard({ p, flipped, dragState, onDragStart, onDragMove, onDragEnd, 
         if (ef.type==="heartloss") return <div key={ef.id} style={{...bs,...anti,left:ef.x-24,top:ef.y-24,fontSize:48,opacity:a,zIndex:40}}>💔</div>;
         if (ef.type==="lock") return <div key={ef.id} style={{...bs,...anti,left:ef.x-10,top:ef.y-24,fontSize:20,opacity:a,zIndex:28}}>🔒</div>;
         if (ef.type==="summonCircle") {
-          const rs = (CELL-12) * (0.5 + a * 0.6);
-          return <div key={ef.id} style={{...bs,left:ef.x-rs/2,top:ef.y-rs/2,width:rs,height:rs,borderRadius:"50%",border:`${2.5+a*2}px solid ${ef.color}`,boxShadow:`0 0 ${10*a}px ${ef.color}88`,opacity:a*0.85,zIndex:30}}/>;
+          const prog = 1 - a; // 0→1 진행
+          const rs = (CELL-4) * (0.1 + prog * 1.0);
+          const bw = Math.max(1.5, 3.5 - prog * 2);
+          return <div key={ef.id} style={{...bs,left:ef.x-rs/2,top:ef.y-rs/2,width:rs,height:rs,borderRadius:"50%",border:`${bw}px solid ${ef.color}`,boxShadow:`0 0 ${12*(1-prog*0.5)}px ${ef.color}`,opacity:a*0.9,zIndex:30}}/>;
         }
         return null;
       })}
@@ -1403,37 +1429,37 @@ export default function App() {
 
     const gs = gsRef.current;
 
-    // 0.5s 구간 PvP 킬 전송
-    const spawnToField = (target, monType, fromWave) => {
-      if (target.dead) return;
-      const m = spawnEnemy(monType, fromWave);
-      m.pathD = Math.random() * 60;
-      const pos = posOnPath(m.pathD);
-      m.x = pos.x; m.y = pos.y;
-      target.enemies.push(m);
-    };
+    // 킬 시 상대방 대기열에 추가 (보스 라운드 중에는 전송 안 함)
     const onKill0 = () => {
-      p0.killsInInterval = (p0.killsInInterval||0) + 1;
+      if (p0.bossRound || p1.dead) return;
       p0.totalKills = (p0.totalKills||0) + 1;
-      if (p0.totalKills % 10 === 0) spawnToField(p1, "speed", p0.wave);
+      if (p0.totalKills % 10 === 0) p1.spawnQueue.push({monType:"speed", wave:p0.wave});
+      p1.spawnQueue.push({monType:"normal", wave:p0.wave});
     };
     const onKill1 = () => {
-      p1.killsInInterval = (p1.killsInInterval||0) + 1;
+      if (p1.bossRound || p0.dead) return;
       p1.totalKills = (p1.totalKills||0) + 1;
-      if (p1.totalKills % 10 === 0) spawnToField(p0, "speed", p1.wave);
+      if (p1.totalKills % 10 === 0) p0.spawnQueue.push({monType:"speed", wave:p1.wave});
+      p0.spawnQueue.push({monType:"normal", wave:p1.wave});
     };
 
     if (!p0.dead) tickPlayer(p0, dt, onKill0);
     if (!p1.dead) tickPlayer(p1, dt, onKill1);
 
-    // 0.5s 구간마다: 상대 킬 수 > 0 이면 내 필드에 normal 1마리
-    gs.intervalTimer = (gs.intervalTimer||0) + dt;
-    if (gs.intervalTimer >= 0.5) {
-      gs.intervalTimer -= 0.5;
-      if (!p0.dead && (p1.killsInInterval||0) > 0) spawnToField(p0, "normal", p1.wave);
-      if (!p1.dead && (p0.killsInInterval||0) > 0) spawnToField(p1, "normal", p0.wave);
-      p0.killsInInterval = 0;
-      p1.killsInInterval = 0;
+    // 0.1s마다 대기열에서 꺼내서 소환 (보스 라운드 중 비활성)
+    gs.spawnTimer = (gs.spawnTimer||0) + dt;
+    if (gs.spawnTimer >= 0.1) {
+      gs.spawnTimer -= 0.1;
+      for (const p of [p0, p1]) {
+        if (p.bossRound || p.dead || !p.spawnQueue.length) continue;
+        const item = p.spawnQueue.shift();
+        const tiw = Math.max(0, p.gameTime - (p.nextBossTime - 90));
+        const m = spawnEnemy(item.monType, item.wave, tiw);
+        m.pathD = Math.random() * 60;
+        const pos = posOnPath(m.pathD);
+        m.x = pos.x; m.y = pos.y;
+        p.enemies.push(m);
+      }
     }
 
     // 양쪽 보스 처치 시 웨이브 클리어 애니메이션
@@ -1455,8 +1481,12 @@ export default function App() {
           p.bossRound = false;
           p.bigTimer = 20;
           p.nextBossTime = p.gameTime + 90;
-          p.killsInInterval = 0;
-          spawnToField(p, "normal", nextWave);
+          p.spawnQueue = [];
+          const n = spawnEnemy("normal", nextWave, 0);
+          n.pathD = Math.random() * 40;
+          const pos = posOnPath(n.pathD);
+          n.x = pos.x; n.y = pos.y;
+          p.enemies.push(n);
         }
       }
     }
@@ -1475,20 +1505,21 @@ export default function App() {
   const startGame = useCallback(() => {
     const players = [makePlayer(0,p1Deck,p1Class,p1CritMult), makePlayer(1,p2Deck,p2Class,p2CritMult)];
     for (const p of players) {
-      const n = spawnEnemy("normal", 1);
+      const n = spawnEnemy("normal", 1, 0);
       n.pathD = Math.random() * 40;
       const pos = posOnPath(n.pathD);
       n.x = pos.x; n.y = pos.y;
       p.enemies.push(n);
     }
-    gsRef.current = { players, intervalTimer: 0, waveClearing: false, waveClearTimer: 0, clearedWave: 0 };
+    gsRef.current = { players, spawnTimer: 0, waveClearing: false, waveClearTimer: 0, clearedWave: 0 };
     setPhase("game");
   }, [p1Deck, p2Deck, p1Class, p2Class, p1CritMult, p2CritMult]);
 
   const summon = useCallback(pid => {
     const p = gsRef.current?.players[pid]; if (!p || p.sp < p.summonCost) return;
+    const reserved = (p.summonPending||[]).map(ps=>ps.key);
     const empties = [];
-    for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) { const k=cellKey(c,r); if(!p.dice[k]) empties.push(k); }
+    for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) { const k=cellKey(c,r); if(!p.dice[k]&&!reserved.includes(k)) empties.push(k); }
     if (!empties.length) return;
     const type = rnd(p.deck);
     const chosenKey = rnd(empties);
@@ -1510,17 +1541,21 @@ export default function App() {
     let merged = false, isJokerCopy = false;
 
     const spawnSummonDice = (dot) => {
+      const reserved = (p.summonPending||[]).map(ps=>ps.key);
       const empties = [];
-      for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) { const k=cellKey(c,r); if(!p.dice[k]) empties.push(k); }
+      for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) { const k=cellKey(c,r); if(!p.dice[k]&&!reserved.includes(k)) empties.push(k); }
       if (!empties.length) return;
       const sd = dot <= 1 ? 1 : Math.floor(Math.random() * (dot - 1)) + 1;
       const st = rnd(p.deck);
       const sk = rnd(empties);
-      p.dice[sk] = makeDice(st, sd, p.diceLevels[st]||1, cl[st]||1);
-      addDiceAnim(p, sk, "summonSpawn");
-      const [sc, sr] = sk.split(",").map(Number);
-      const {x:sx2, y:sy2} = cellXY(sc, sr);
-      p.effects.push({ id:uid(), type:"summonCircle", x:sx2, y:sy2, color:"#00BB55", life:1.0, maxLife:1.0 });
+      // 0.2초 후 주사위 생성 예약
+      p.summonPending = (p.summonPending||[]).concat([{
+        delay:0.2, type:st, dot:sd, key:sk, lv:p.diceLevels[st]||1, clv:cl[st]||1
+      }]);
+      // 즉시 마법진 이펙트
+      const [sc2, sr2] = sk.split(",").map(Number);
+      const {x:sx2, y:sy2} = cellXY(sc2, sr2);
+      p.effects.push({ id:uid(), type:"summonCircle", x:sx2, y:sy2, color:"#00BB55", life:0.25, maxLife:0.25 });
     };
 
     if (srcJoker && tgtAdapt) {
