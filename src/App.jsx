@@ -68,7 +68,7 @@ const DICE_DEFS = {
   lock:        { name:"잠금",   border:"#334488", bg:"#667799", target:"first",
     ability:{ type:"lock" },
     stats:{ dmg:{base:30,cP:5,lP:20}, atkInt:{base:0.8,cM:0.01,lM:0}, lockProb:{base:4,cP:1,lP:2}, lockDur:{base:3,cP:0.2,lP:0.5} } },
-  wind:        { name:"바람",   border:"#00AA88", bg:"#44DDBB", target:"first",
+  wind:        { name:"바람",   border:"#30C4A8", bg:"#55DDCC", target:"first",
     ability:{ type:"windBuff" },
     stats:{ dmg:{base:20,cP:3,lP:15}, atkInt:{base:0.45,cM:0,lM:0}, speedBuff:{base:10,cP:2,lP:10} } },
   // ── 희귀 등급 ──
@@ -383,14 +383,19 @@ function DiceLock({ size=60, dot=1 }) {
 
 function DiceWind({ size=60, dot=1 }) {
   const S=size, b=DICE_DEFS.wind.border;
+  // 방패 형태 - 위는 완만한 아치, 아래는 유기적 곡선
+  const shp = [
+    `M${S*.16},${S*.19}`,
+    `Q${S*.5},${S*.07} ${S*.84},${S*.19}`,
+    `C${S*.94},${S*.36} ${S*.9},${S*.54} ${S*.83},${S*.67}`,
+    `Q${S*.67},${S*.85} ${S*.5},${S*.92}`,
+    `Q${S*.33},${S*.85} ${S*.17},${S*.67}`,
+    `C${S*.1},${S*.54} ${S*.06},${S*.36} ${S*.16},${S*.19} Z`,
+  ].join(" ");
   return (
     <DiceCard size={S} border={b}>
-      <path d={`M${S*.1},${S*.28} Q${S*.3},${S*.15} ${S*.55},${S*.25} Q${S*.75},${S*.35} ${S*.65},${S*.45} Q${S*.55},${S*.55} ${S*.35},${S*.5}`}
-        fill="none" stroke={b} strokeWidth={S*.045} strokeLinecap="round" opacity="0.65"/>
-      <path d={`M${S*.1},${S*.45} Q${S*.3},${S*.32} ${S*.58},${S*.42} Q${S*.78},${S*.52} ${S*.68},${S*.62} Q${S*.58},${S*.72} ${S*.38},${S*.67}`}
-        fill="none" stroke={b} strokeWidth={S*.04} strokeLinecap="round" opacity="0.58"/>
-      <path d={`M${S*.15},${S*.62} Q${S*.32},${S*.52} ${S*.55},${S*.6} Q${S*.72},${S*.68} ${S*.65},${S*.78}`}
-        fill="none" stroke={b} strokeWidth={S*.035} strokeLinecap="round" opacity="0.5"/>
+      <path d={shp} fill={b} opacity="0.20"/>
+      <path d={shp} fill="none" stroke={b} strokeWidth={S*.042} strokeLinejoin="round" opacity="0.52"/>
       <DotLayer dot={dot} color={b} size={S}/>
     </DiceCard>
   );
