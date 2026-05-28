@@ -14,6 +14,9 @@ import adaptImg        from "./assets/dice/adapt.webp";
 import jokerImg        from "./assets/dice/joker.webp";
 import growthImg       from "./assets/dice/growth.webp";
 import summonImg       from "./assets/dice/summon.webp";
+import sunImg          from "./assets/dice/sun.webp";
+import comboImg        from "./assets/dice/combo.webp";
+import moonImg         from "./assets/dice/moon.webp";
 
 // ═══════════════════════════════════════════════════════════════
 //  LAYOUT
@@ -261,15 +264,13 @@ function DiceCardLegend({ size, borderColor="#C8A000", children }) {
   );
 }
 
-function DiceImgBase({ size, img, dotColor, dot, scale=1.1, dotDy=0 }) {
+function DiceImgBase({ size, img, dotColor, dot, scale=1.1, imgDy=0 }) {
   const S = size;
   const sc = scale, off = -(S * (sc - 1) / 2);
   return (
     <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
-      <image href={img} x={off} y={off} width={S*sc} height={S*sc}/>
-      <g transform={dotDy ? `translate(0,${dotDy})` : undefined}>
-        <DotLayer dot={dot} color={dotColor} size={S}/>
-      </g>
+      <image href={img} x={off} y={off + imgDy} width={S*sc} height={S*sc}/>
+      <DotLayer dot={dot} color={dotColor} size={S}/>
     </svg>
   );
 }
@@ -315,11 +316,11 @@ function DiceGambleGrowth({ size=60, dot=1 }) {
 }
 
 function DiceJoker({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={jokerImg} dotColor="#FF8800" dot={dot} scale={1.25} dotDy={-size*0.065}/>;
+  return <DiceImgBase size={size} img={jokerImg} dotColor="#FF8800" dot={dot} scale={1.25} imgDy={-size*0.065}/>;
 }
 
 function DiceGrowth({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={growthImg} dotColor={DICE_DEFS.growth.border} dot={dot} scale={1.25} dotDy={-size*0.065}/>;
+  return <DiceImgBase size={size} img={growthImg} dotColor={DICE_DEFS.growth.border} dot={dot} scale={1.25} imgDy={-size*0.065}/>;
 }
 
 function DiceLight({ size=60, dot=1 }) {
@@ -327,7 +328,10 @@ function DiceLight({ size=60, dot=1 }) {
 }
 
 function DiceSun({ size=60, dot=1, active=false }) {
-  const S=size, b=active?"#DD5500":"#886633";
+  if (active) {
+    return <DiceImgBase size={size} img={sunImg} dotColor="#DD5500" dot={dot} scale={1.25} imgDy={-size*0.065}/>;
+  }
+  const S=size, b="#886633";
   const cx=S*.5, cy=S*.5;
   const pts=[];
   for(let i=0;i<12;i++){
@@ -346,24 +350,15 @@ function DiceSun({ size=60, dot=1, active=false }) {
 }
 
 function DiceCombo({ size=60, dot=1, comboCount=0 }) {
-  const S=size, b="#CC1188";
-  const digits = String(comboCount).length;
-  const fs = digits >= 4 ? S*.32 : digits === 3 ? S*.4 : digits === 2 ? S*.52 : S*.68;
-  return (
-    <DiceCardLegend size={S} borderColor={b}>
-      <text x={S*.5} y={S*.43} textAnchor="middle" dominantBaseline="middle"
-        fontSize={fs} fontWeight="900" fill={b} opacity="0.45"
-        textLength={S*0.78} lengthAdjust="spacingAndGlyphs"
-        style={{fontFamily:"Arial Black,Arial,sans-serif"}}>{comboCount}</text>
-      <DotLayer dot={dot} color={b} size={S} legend={true}/>
-    </DiceCardLegend>
-  );
+  return <DiceImgBase size={size} img={comboImg} dotColor="#CC1188" dot={dot} scale={1.25} imgDy={-size*0.065}/>;
 }
 
 function DiceMoon({ size=60, dot=1, active=false, moonCount=0 }) {
-  const S=size;
+  if (active) {
+    return <DiceImgBase size={size} img={moonImg} dotColor="#44AADD" dot={dot} scale={1.25} imgDy={-size*0.065}/>;
+  }
+  const S=size, b="#888888";
   const uidRef = useRef(`mn${_dcCtr++}`).current;
-  const b = active ? "#44AADD" : "#888888";
   const cx=S*.5, cy=S*.5, rx=S*.2, pad=S*.1;
   const phase = moonCount<=3?"crescent":moonCount<=5?"half":"full";
   return (
@@ -371,7 +366,7 @@ function DiceMoon({ size=60, dot=1, active=false, moonCount=0 }) {
       <defs>
         <linearGradient id={`imn_${uidRef}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FFFFFF"/>
-          <stop offset="100%" stopColor={active?"#DDEEFF":"#F0F0F0"}/>
+          <stop offset="100%" stopColor="#F0F0F0"/>
         </linearGradient>
         <linearGradient id={`gmn_${uidRef}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%"   stopColor="white" stopOpacity="0.0"/>
@@ -413,7 +408,7 @@ function DiceAdapt({ size=60, dot=1 }) {
 }
 
 function DiceSummon({ size=60, dot=1 }) {
-  return <DiceImgBase size={size} img={summonImg} dotColor={DICE_DEFS.summon.border} dot={dot} scale={1.25} dotDy={-size*0.065}/>;
+  return <DiceImgBase size={size} img={summonImg} dotColor={DICE_DEFS.summon.border} dot={dot} scale={1.25} imgDy={-size*0.065}/>;
 }
 
 const DICE_SVG = { fire:DiceFire, electric:DiceElectric, poison:DicePoison, ice:DiceIce, steel:DiceSteel, broken:DiceBroken, gamble:DiceGamble, lock:DiceLock, wind:DiceWind, gamblegrowth:DiceGambleGrowth, joker:DiceJoker, growth:DiceGrowth, light:DiceLight, sun:DiceSun, combo:DiceCombo, moon:DiceMoon, adapt:DiceAdapt, summon:DiceSummon };
