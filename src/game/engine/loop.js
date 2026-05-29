@@ -80,7 +80,7 @@ export function tickPlayer(p, dt, onKill) {
     if (!md || md.type !== "moon") continue;
     const mlv  = p.diceLevels["moon"] || 1;
     const mclv = (p.classLevels?.["moon"]) || (DICE_REGISTRY["moon"].minClass||7);
-    const baseSpeed = md.dot * (7 + (mclv - 1)) + (mlv - 1) * 2;
+    const baseSpeed = md.dot * mclv + (mlv - 1) * 2;
     const speedPct  = moonActivated ? baseSpeed * 1.03 : baseSpeed;
     const [mc, mr] = mk.split(",").map(Number);
     for (const [nc, nr] of [[mc-1,mr],[mc+1,mr],[mc,mr-1],[mc,mr+1]]) {
