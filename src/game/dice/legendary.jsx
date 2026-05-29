@@ -146,7 +146,7 @@ export class SunDice extends DiceBase {
   static onHit(proj, tgt, enemies, p) {
     if ((proj.sunCount||0) >= 3 && (proj.sunCount % 2) === 1) {
       const sunDice = p.dice[proj.diceKey];
-      const sd = getStat(SunDice.stats.splashDmg, proj.classLv, proj.level);
+      const sd = getStat(SunDice.stats.splashDmg, proj.classLv, proj.level) * (proj.critApplied||1);
       const sunHits = sunDice?.sunHits || 1;
       const splashR = Math.min(CELL * 0.5 + (sunHits - 1) * CELL * 0.2, CELL * 2.5);
       for (const e of enemies)

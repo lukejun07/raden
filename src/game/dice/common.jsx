@@ -26,7 +26,7 @@ export class FireDice extends DiceBase {
   static stats   = { dmg: { base: 20, cP: 3, lP: 10 }, atkInt: { base: 0.8, cM: 0.01, lM: 0 }, splashDmg: { base: 20, cP: 3, lP: 20 } };
   static extraStatDefs = [{ label: '스플래시 피해', key: 'splashDmg' }];
   static onHit(proj, tgt, enemies, p) {
-    const sd = getStat(FireDice.stats.splashDmg, proj.classLv, proj.level);
+    const sd = getStat(FireDice.stats.splashDmg, proj.classLv, proj.level) * (proj.critApplied||1);
     for (const e of enemies)
       if (e.id !== tgt.id && e.hp > 0 && Math.hypot(e.x-tgt.x, e.y-tgt.y) <= FireDice.ability.radius)
         dealDmg(p, e, sd);
@@ -48,7 +48,7 @@ export class ElectricDice extends DiceBase {
   static extraStatDefs = [{ label: '체인 수', fixed: '3개' }, { label: '체인 배율', fixed: '100/70/30%' }];
   static onHit(proj, tgt, enemies, p) {
     const ab = ElectricDice.ability;
-    const cd = getStat(ElectricDice.stats.chainDmg, proj.classLv, proj.level);
+    const cd = getStat(ElectricDice.stats.chainDmg, proj.classLv, proj.level) * (proj.critApplied||1);
     let last = tgt;
     for (let ci = 0; ci < ab.count; ci++) {
       const nx = enemies

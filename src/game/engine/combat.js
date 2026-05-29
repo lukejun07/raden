@@ -5,10 +5,12 @@ export function applyHit(p, proj, tgt) {
   const DC = DICE_REGISTRY[proj.diceType];
   let dmg = proj.dmg;
 
+  proj.critApplied = 1;
   if (!DC.skipCrit) {
     const critChance = 0.05 + (proj.moonCritBonus||0) / 100;
     if (Math.random() < critChance) {
-      dmg *= proj.critMult || 2;
+      proj.critApplied = proj.critMult || 2;
+      dmg *= proj.critApplied;
       spawnFx(p, "burst", tgt.x, tgt.y, "#FFD700");
     }
   }
