@@ -13,7 +13,7 @@ export function tickPlayer(p, dt, onKill) {
   const timeInWave = Math.max(0, p.gameTime - (p.nextBossTime - 90));
 
   if (!p.bossRound && p.gameTime >= p.nextBossTime) {
-    const bonusHp = p.enemies.reduce((s, e) => s + Math.max(0, e.hp), 0) * 0.5;
+    const bonusHp = p.enemies.reduce((s, e) => s + Math.max(0, e.hp), 0) * 0.15;
     const boss = spawnEnemy("boss", p.wave, 0);
     boss.hp += bonusHp; boss.maxHp = boss.hp;
     p.enemies = [boss];

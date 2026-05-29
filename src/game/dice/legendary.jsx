@@ -87,7 +87,7 @@ export class JokerDice extends DiceBase {
   static bg       = '#FFFFFF';
   static target   = 'first';
   static minClass = 7;
-  static description = '합성 시 어떤 타입과도 합성 가능한 만능 전설 주사위.';
+  static description = '같은 눈금의 다른 종류 주사위와 합성하면 그 주사위의 타입으로 변신(복사)합니다.';
   static ability = { type: 'joker' };
   static stats   = { dmg: { base: 40, cP: 5, lP: 10 }, atkInt: { base: 1.5, cM: 0, lM: 0 } };
   static extraStatDefs = [{ label: '특수 효과', fixed: '만능 합성' }];
@@ -206,7 +206,7 @@ export class SummonDice extends DiceBase {
   static bg       = '#88FFAA';
   static target   = 'first';
   static minClass = 7;
-  static description = '공격 명중 시 일정 확률로 빈 슬롯에 새 주사위를 소환합니다.';
+  static description = '합성 시 100% 확률로 결과 눈금보다 낮은 눈금의 주사위를 빈 슬롯에 소환합니다.';
   static ability = { type: 'summon' };
   static stats   = { dmg: { base: 10, cP: 10, lP: 10 }, atkInt: { base: 1.5, cM: 0, lM: 0 } };
   static extraStatDefs = [{ label: '소환 조건', fixed: '명중 확률' }];

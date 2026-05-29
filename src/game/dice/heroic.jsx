@@ -11,7 +11,7 @@ export class AdaptDice extends DiceBase {
   static bg       = '#FFFFFF';
   static target   = 'first';
   static minClass = 5;
-  static description = '주변에 배치된 주사위의 공격 타입을 복사하여 공격합니다.';
+  static description = '같은 눈금이라면 종류에 상관없이 아무 주사위와도 합성할 수 있습니다.';
   static ability = { type: 'adapt' };
   static stats   = { dmg: { base: 20, cP: 5, lP: 10 }, atkInt: { base: 1.0, cM: 0, lM: 0 } };
   static extraStatDefs = [{ label: '효과', fixed: '주변 타입 복사' }];
