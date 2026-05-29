@@ -78,14 +78,19 @@ export function tickPlayer(p, dt, onKill) {
   const moonBuffMap = {};
   for (const [mk, md] of Object.entries(p.dice)) {
     if (!md || md.type !== "moon") continue;
+    const mlv  = p.diceLevels["moon"] || 1;
+    const mclv = (p.classLevels?.["moon"]) || (DICE_REGISTRY["moon"].minClass||7);
+    const baseSpeed = md.dot * (7 + (mclv - 1)) + (mlv - 1) * 2;
+    const speedPct  = moonActivated ? baseSpeed * 1.03 : baseSpeed;
     const [mc, mr] = mk.split(",").map(Number);
     for (const [nc, nr] of [[mc-1,mr],[mc+1,mr],[mc,mr-1],[mc,mr+1]]) {
       if (nc<0||nc>=COLS||nr<0||nr>=ROWS) continue;
       const ck = cellKey(nc, nr);
-      const prev = moonBuffMap[ck] || { crit: 0, dmg: 0 };
+      const prev = moonBuffMap[ck] || { crit: 0, dmg: 0, speed: 0 };
       moonBuffMap[ck] = {
-        crit: Math.max(prev.crit, md.dot * 5),
-        dmg:  Math.max(prev.dmg,  md.dot * 10),
+        crit:  Math.max(prev.crit,  md.dot * 5),
+        dmg:   Math.max(prev.dmg,   md.dot * 10),
+        speed: Math.max(prev.speed, speedPct),
       };
     }
   }
@@ -107,8 +112,8 @@ export function tickPlayer(p, dt, onKill) {
     if (d.type === "sun" && sunActivated) atkInt = 0.4;
     const selfBuff  = getSelfSpeedBuff(d, clv, lv);
     const lightBuff = Math.min((lightBuffMap[key]||0) / 100, 0.95);
-    const baseBuff  = Math.min(selfBuff + lightBuff, 0.95);
-    const totalBuff = moonBuffMap[key] ? Math.min(baseBuff * 1.03, 0.99) : baseBuff;
+    const moonSpeed = (moonBuffMap[key]?.speed || 0) / 100;
+    const totalBuff = Math.min(selfBuff + lightBuff + moonSpeed, 0.99);
 
     const dotPositions = DOT_LAYOUTS[d.dot];
     if (!dotPositions) continue;
