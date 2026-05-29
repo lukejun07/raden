@@ -156,11 +156,28 @@ export class ComboDice extends DiceBase {
   static bg       = '#FFDDEE';
   static target   = 'first';
   static minClass = 7;
-  static description = '연속 처치 시 콤보가 쌓이며 피해량이 배수로 증가합니다.';
+  static description = '합성될 때마다 콤보 스택이 영구적으로 쌓이며 피해량이 증가합니다.';
   static ability = { type: 'combo' };
   static stats   = { dmg: { base: 50, cP: 10, lP: 10 }, atkInt: { base: 1.2, cM: 0, lM: 0 }, comboDmg: { base: 8, cP: 2, lP: 1 } };
   static extraStatDefs = [{ label: '콤보 피해', key: 'comboDmg' }];
-  static render(p) { return <DiceImgBase {...p} img={comboImg} dotColor={ComboDice.border} scale={1.25} imgDy={-p.size * 0.065}/>; }
+  static render({ size: S, dot, comboCount=0 }) {
+    const sc = 1.25, off = -(S * (sc-1)/2), dy = -S * 0.065;
+    const fs = comboCount >= 100 ? S*0.16 : comboCount >= 10 ? S*0.19 : S*0.23;
+    return (
+      <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`} style={{display:"block"}}>
+        <image href={comboImg} x={off} y={off+dy} width={S*sc} height={S*sc}/>
+        <DotLayer dot={dot} color={ComboDice.border} size={S}/>
+        {comboCount > 0 && <>
+          <circle cx={S*0.5} cy={S*0.5} r={S*0.22} fill="rgba(0,0,0,0.62)"/>
+          <text x={S*0.5} y={S*0.5+fs*0.36} textAnchor="middle"
+            fontSize={fs} fontWeight="900" fill="#FFD700"
+            fontFamily="monospace,sans-serif" style={{userSelect:"none"}}>
+            {comboCount}
+          </text>
+        </>}
+      </svg>
+    );
+  }
 }
 
 export class MoonDice extends DiceBase {

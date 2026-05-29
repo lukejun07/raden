@@ -183,7 +183,7 @@ export class WindDice extends DiceBase {
   static border  = '#30C4A8';
   static bg      = '#55DDCC';
   static target  = 'first';
-  static description = '가장 빠른 적을 공격하며, 자신의 공격속도를 빠르게 유지합니다.';
+  static description = '앞쪽의 적을 공격하며, 주사위 중 가장 빠른 공격속도를 가집니다.';
   static ability = { type: 'windBuff' };
   static stats   = { dmg: { base: 20, cP: 3, lP: 15 }, atkInt: { base: 0.45, cM: 0, lM: 0 }, speedBuff: { base: 10, cP: 2, lP: 10 } };
   static extraStatDefs = [{ label: '공속 버프(%)', key: 'speedBuff' }];
