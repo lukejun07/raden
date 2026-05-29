@@ -82,11 +82,10 @@ export function tickPlayer(p, dt, onKill) {
     for (const [nc, nr] of [[mc-1,mr],[mc+1,mr],[mc,mr-1],[mc,mr+1]]) {
       if (nc<0||nc>=COLS||nr<0||nr>=ROWS) continue;
       const ck = cellKey(nc, nr);
-      const prev = moonBuffMap[ck] || { crit: 0, dmg: 0, speed: 0 };
+      const prev = moonBuffMap[ck] || { crit: 0, dmg: 0 };
       moonBuffMap[ck] = {
-        crit:  Math.max(prev.crit,  md.dot * 5),
-        dmg:   Math.max(prev.dmg,   md.dot * 10),
-        speed: Math.max(prev.speed, md.dot * 3),
+        crit: Math.max(prev.crit, md.dot * 5),
+        dmg:  Math.max(prev.dmg,  md.dot * 10),
       };
     }
   }
@@ -108,7 +107,8 @@ export function tickPlayer(p, dt, onKill) {
     if (d.type === "sun" && sunActivated) atkInt = 0.4;
     const selfBuff  = getSelfSpeedBuff(d, clv, lv);
     const lightBuff = Math.min((lightBuffMap[key]||0) / 100, 0.95);
-    const totalBuff = Math.min(selfBuff + lightBuff, 0.95);
+    const baseBuff  = Math.min(selfBuff + lightBuff, 0.95);
+    const totalBuff = moonBuffMap[key] ? Math.min(baseBuff * 1.03, 0.99) : baseBuff;
 
     const dotPositions = DOT_LAYOUTS[d.dot];
     if (!dotPositions) continue;
@@ -125,7 +125,6 @@ export function tickPlayer(p, dt, onKill) {
       : def.border;
 
     let interval = atkInt * (1 - totalBuff) / d.dot;
-    if (moonBuffMap[key]?.speed) interval /= (1 + moonBuffMap[key].speed / 100);
     interval = Math.max(interval, 0.001);
 
     let shots = 0;
