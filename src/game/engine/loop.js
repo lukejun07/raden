@@ -110,10 +110,10 @@ export function tickPlayer(p, dt, onKill) {
     d.subIdx = (d.subIdx||0) % d.dot;
     let atkInt = getStat(def.stats.atkInt, clv, lv);
     if (d.type === "sun" && sunActivated) atkInt = 0.4;
-    const selfBuff  = getSelfSpeedBuff(d, clv, lv);
-    const lightBuff = Math.min((lightBuffMap[key]||0) / 100, 0.95);
-    const moonSpeed = (moonBuffMap[key]?.speed || 0) / 100;
-    const totalBuff = Math.min(selfBuff + lightBuff + moonSpeed, 0.99);
+    const selfBuff   = getSelfSpeedBuff(d, clv, lv);
+    const lightBuff  = (lightBuffMap[key]||0) / 100;
+    const moonSpeed  = (moonBuffMap[key]?.speed || 0) / 100;
+    const totalBuff  = Math.min(selfBuff + Math.max(lightBuff, moonSpeed), 0.95);
 
     const dotPositions = DOT_LAYOUTS[d.dot];
     if (!dotPositions) continue;
