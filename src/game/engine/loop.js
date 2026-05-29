@@ -13,7 +13,7 @@ export function tickPlayer(p, dt, onKill) {
   const timeInWave = Math.max(0, p.gameTime - (p.nextBossTime - 90));
 
   if (!p.bossRound && p.gameTime >= p.nextBossTime) {
-    const bonusHp = p.enemies.reduce((s, e) => s + Math.max(0, e.hp), 0) * 0.15;
+    const bonusHp = p.enemies.reduce((s, e) => s + Math.max(0, e.hp), 0) * 0.5;
     const boss = spawnEnemy("boss", p.wave, 0);
     boss.hp += bonusHp; boss.maxHp = boss.hp;
     p.enemies = [boss];
@@ -117,29 +117,40 @@ export function tickPlayer(p, dt, onKill) {
       const cc = p.comboCount || 0;
       dmg += cpd * cc * (cc + 1) / 2;
     }
-    let tgt;
-    if (def.target === "random") { tgt = live[Math.floor(Math.random() * live.length)]; }
-    else if (def.target === "noPoison") { const pool = live.filter(e => !e.poison); tgt = (pool.length ? pool : live)[Math.floor(Math.random() * (pool.length||live.length))]; }
-    else if (def.target === "strongest") { tgt = live.reduce((a,b) => a.hp > b.hp ? a : b); }
-    else { tgt = live.reduce((a,b) => a.dist < b.dist ? a : b); }
 
     const projColor = def.border === "#RAINBOW" ? `hsl(${(Date.now()/10)%360},100%,50%)`
       : (d.type==="sun" && sunActivated) ? "#DD5500"
       : def.border;
-    const projBase = {diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:1560,tx:tgt.x,ty:tgt.y,diceKey:key,sunCount,moonActivated,critMult:p.critMult||2};
 
-    d.cd = atkInt * (1 - totalBuff) / d.dot;
-    if (moonActivated) d.cd /= 1.03;
-    let gunX, gunY;
-    if (dotPositions === "star") {
-      gunX = cx; gunY = cy;
-    } else {
-      const [px, py] = dotPositions[d.subIdx];
-      gunX = cx + (px/100 - 0.5) * dotSize;
-      gunY = cy + (py/100 - 0.5) * dotSize;
+    let interval = atkInt * (1 - totalBuff) / d.dot;
+    if (moonActivated) interval /= 1.03;
+    interval = Math.max(interval, 0.001);
+
+    let shots = 0;
+    while (d.cd <= 0 && shots < 20) {
+      const liveSub = p.enemies.filter(e=>e.hp>0);
+      if (!liveSub.length) { d.cd = interval; break; }
+      let tgt;
+      if (def.target === "random") { tgt = liveSub[Math.floor(Math.random() * liveSub.length)]; }
+      else if (def.target === "noPoison") { const pool = liveSub.filter(e => !e.poison); tgt = (pool.length ? pool : liveSub)[Math.floor(Math.random() * (pool.length||liveSub.length))]; }
+      else if (def.target === "strongest") { tgt = liveSub.reduce((a,b) => a.hp > b.hp ? a : b); }
+      else { tgt = liveSub.reduce((a,b) => a.dist < b.dist ? a : b); }
+
+      const projBase = {diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:1560,tx:tgt.x,ty:tgt.y,diceKey:key,sunCount,moonActivated,critMult:p.critMult||2};
+
+      let gunX, gunY;
+      if (dotPositions === "star") {
+        gunX = cx; gunY = cy;
+      } else {
+        const [px, py] = dotPositions[d.subIdx];
+        gunX = cx + (px/100 - 0.5) * dotSize;
+        gunY = cy + (py/100 - 0.5) * dotSize;
+      }
+      newProjs.push({...projBase, id:uid(), x:gunX, y:gunY, targetId:tgt.id, dmg, angleSpread:0});
+      d.cd += interval;
+      d.subIdx = (d.subIdx + 1) % d.dot;
+      shots++;
     }
-    newProjs.push({...projBase, id:uid(), x:gunX, y:gunY, targetId:tgt.id, dmg, angleSpread:0});
-    d.subIdx = (d.subIdx + 1) % d.dot;
   }
 
   const hitIds = new Set();

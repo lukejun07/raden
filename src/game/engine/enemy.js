@@ -11,8 +11,8 @@ export const MON_SPECS = {
 
 export function calcBaseHP(wave, timeInWave=0) {
   const t = Math.min(Math.max(timeInWave, 0) / 90, 1);
-  const startHp = 350 * Math.pow(1.8, wave - 1);
-  const endHp   = startHp * 4;
+  const startHp = Math.pow(10, wave + 1);
+  const endHp   = Math.pow(10, wave + 2);
   return startHp + (endHp - startHp) * t;
 }
 
@@ -20,7 +20,7 @@ export function spawnEnemy(monType, wave, timeInWave=0) {
   const ms = MON_SPECS[monType];
   const base = calcBaseHP(wave, timeInWave);
   const hp = monType === "big"   ? base * 4
-            : monType === "boss"  ? 3000 * wave
+            : monType === "boss"  ? 25000 * wave
             : monType === "speed" ? base * 0.6
             : base;
   const isDeath = wave >= 7, isFury = wave >= 11;
