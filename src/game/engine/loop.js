@@ -78,13 +78,15 @@ export function tickPlayer(p, dt, onKill) {
   const moonBuffMap = {};
   for (const [mk, md] of Object.entries(p.dice)) {
     if (!md || md.type !== "moon") continue;
-    const mlv  = p.diceLevels["moon"] || 1;
-    const mclv = (p.classLevels?.["moon"]) || (DICE_REGISTRY["moon"].minClass||7);
-    const mbPct = md.dot * (7 + (mclv-1)*1) + (mlv-1)*2;
     const [mc, mr] = mk.split(",").map(Number);
     for (const [nc, nr] of [[mc-1,mr],[mc+1,mr],[mc,mr-1],[mc,mr+1]]) {
       if (nc<0||nc>=COLS||nr<0||nr>=ROWS) continue;
-      moonBuffMap[cellKey(nc,nr)] = Math.max(moonBuffMap[cellKey(nc,nr)]||0, mbPct);
+      const ck = cellKey(nc, nr);
+      const prev = moonBuffMap[ck] || { crit: 0, dmg: 0 };
+      moonBuffMap[ck] = {
+        crit: Math.max(prev.crit, md.dot * 5),
+        dmg:  Math.max(prev.dmg,  md.dot * 10),
+      };
     }
   }
 
@@ -105,8 +107,7 @@ export function tickPlayer(p, dt, onKill) {
     if (d.type === "sun" && sunActivated) atkInt = 0.4;
     const selfBuff  = getSelfSpeedBuff(d, clv, lv);
     const lightBuff = Math.min((lightBuffMap[key]||0) / 100, 0.95);
-    const moonBuff  = Math.min((moonBuffMap[key]||0) / 100, 0.95);
-    const totalBuff = Math.min(selfBuff + lightBuff + moonBuff, 0.95);
+    const totalBuff = Math.min(selfBuff + lightBuff, 0.95);
 
     const dotPositions = DOT_LAYOUTS[d.dot];
     if (!dotPositions) continue;
@@ -123,7 +124,7 @@ export function tickPlayer(p, dt, onKill) {
       : def.border;
 
     let interval = atkInt * (1 - totalBuff) / d.dot;
-    if (moonActivated) interval /= 1.03;
+    if (moonBuffMap[key]) interval /= 1.03;
     interval = Math.max(interval, 0.001);
 
     let shots = 0;
@@ -136,7 +137,8 @@ export function tickPlayer(p, dt, onKill) {
       else if (def.target === "strongest") { tgt = liveSub.reduce((a,b) => a.hp > b.hp ? a : b); }
       else { tgt = liveSub.reduce((a,b) => a.dist < b.dist ? a : b); }
 
-      const projBase = {diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:1560,tx:tgt.x,ty:tgt.y,diceKey:key,sunCount,moonActivated,critMult:p.critMult||2};
+      const mb = moonBuffMap[key];
+      const projBase = {diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:1560,tx:tgt.x,ty:tgt.y,diceKey:key,sunCount,moonActivated,moonCritBonus:mb?.crit||0,moonDmgBonus:mb?.dmg||0,critMult:p.critMult||2};
 
       let gunX, gunY;
       if (dotPositions === "star") {

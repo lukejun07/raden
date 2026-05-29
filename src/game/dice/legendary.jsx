@@ -102,10 +102,23 @@ export class GrowthDice extends DiceBase {
   static bg       = '#BB66FF';
   static target   = 'first';
   static minClass = 7;
-  static description = '시간이 지날수록 데미지가 지수적으로 증가합니다.';
+  static description = '타이머(7클=15초, 클업당 -1초) 만료 시 눈금+1의 랜덤 주사위로 변환됩니다.';
   static ability = { type: 'growth' };
   static stats   = { dmg: { base: 10, cP: 5, lP: 10 }, atkInt: { base: 2.0, cM: 0, lM: 0 }, growthTime: { base: 21, cM: 1, lM: 0 } };
-  static extraStatDefs = [{ label: '성장 주기(초)', key: 'growthTime' }];
+  static extraStatDefs = [{ label: '변환 주기(초)', key: 'growthTime' }];
+  static onTick(d, p, dt, key, ctx) {
+    if (d.dot >= 7) return;
+    const clv = (p.classLevels?.[d.type]) || GrowthDice.minClass;
+    const lv  = p.diceLevels?.[d.type] || 1;
+    if (d.growthTimer === undefined)
+      d.growthTimer = getStat(GrowthDice.stats.growthTime, clv, lv);
+    d.growthTimer -= dt;
+    if (d.growthTimer <= 0) {
+      const { makeDice, rnd } = ctx;
+      const newType = rnd(p.deck);
+      p.dice[key] = makeDice(newType, d.dot + 1, p.diceLevels[newType]||1, (p.classLevels||{})[newType]||1);
+    }
+  }
   static render(p) { return <DiceImgBase {...p} img={growthImg} dotColor={GrowthDice.border} scale={1.25} imgDy={-p.size * 0.065}/>; }
 }
 

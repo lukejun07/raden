@@ -23,15 +23,10 @@ export function CritMultSelector({ value, onChange, accent }) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,paddingTop:8,borderTop:"1px solid #eee"}}>
       <span style={{fontSize:11,color:"#667",fontWeight:700,minWidth:68}}>크리티컬 배율</span>
-      <div style={{display:"flex",gap:4}}>
-        {[2,3,4,5].map(m=>(
-          <button key={m} onClick={()=>onChange(m)} style={{
-            width:32,height:24,borderRadius:6,border:`1.5px solid ${value===m?accent:"#ddd"}`,
-            background:value===m?accent:"#fff",color:value===m?"#fff":"#667",
-            fontSize:11,fontWeight:800,cursor:"pointer",padding:0,
-          }}>{m}×</button>
-        ))}
-      </div>
+      <input type="range" min={2} max={40} step={1} value={value}
+        onChange={e=>onChange(Number(e.target.value))}
+        style={{width:80,accentColor:accent,cursor:"pointer"}}/>
+      <span style={{fontSize:12,fontWeight:800,color:accent,minWidth:32,textAlign:"right"}}>{value}×</span>
     </div>
   );
 }

@@ -6,13 +6,13 @@ export function applyHit(p, proj, tgt) {
   let dmg = proj.dmg;
 
   if (!DC.skipCrit) {
-    const critChance = 0.05 + (proj.moonActivated ? 0.05 : 0);
+    const critChance = 0.05 + (proj.moonCritBonus||0) / 100;
     if (Math.random() < critChance) {
       dmg *= proj.critMult || 2;
       spawnFx(p, "burst", tgt.x, tgt.y, "#FFD700");
     }
   }
-  if (proj.moonActivated) dmg *= 1.10;
+  if (proj.moonDmgBonus) dmg *= 1 + proj.moonDmgBonus / 100;
 
   dmg = DC.onModifyDmg(proj, tgt, dmg, p);
   dealDmg(p, tgt, dmg);
