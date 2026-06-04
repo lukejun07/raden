@@ -6,6 +6,38 @@ import { DiceImgBase } from '../../components/dice/Primitives.jsx';
 import gamblegrowthImg from '../../assets/dice/gamblegrowth.webp';
 import lightImg from '../../assets/dice/light.webp';
 
+export class SacrificeDice extends DiceBase {
+  static type     = 'sacrifice';
+  static name     = '제물';
+  static rarity   = 'rare';
+  static border   = '#884400';
+  static bg       = '#DDAA66';
+  static target   = 'first';
+  static minClass = 3;
+  static description = '합칠 때마다 사용된 제물 주사위 수만큼 추가 SP를 획득합니다. 눈금당 공격력 +10.';
+  static ability  = { type: 'none' };
+  static stats    = { dmg: { base: 80, cP: 10, lP: 10 }, atkInt: { base: 1.0, cM: 0, lM: 0 }, spReward: { base: 80 } };
+  static extraStatDefs = [{ label: 'SP 보상', key: 'spReward' }];
+  static onModifyDmg(proj, tgt, dmg) { return dmg + proj.dot * 10; }
+  static render({ size: S, dot }) {
+    const b = '#884400';
+    const cx = S * 0.5, cy = S * 0.5;
+    const flames = [0, 60, 120, 180, 240, 300].slice(0, 3).map(a => {
+      const r = a * Math.PI / 180;
+      return `${(cx + S*0.22*Math.cos(r)).toFixed(1)},${(cy + S*0.22*Math.sin(r)).toFixed(1)}`;
+    });
+    return (
+      <DiceCard size={S} border={b}>
+        <circle cx={cx} cy={cy} r={S*0.28} fill={b} opacity="0.18"/>
+        <polygon points={`${cx},${cy-S*0.22} ${cx+S*0.19},${cy+S*0.11} ${cx-S*0.19},${cy+S*0.11}`}
+          fill={b} opacity="0.5"/>
+        <circle cx={cx} cy={cy} r={S*0.1} fill={b} opacity="0.8"/>
+        <DotLayer dot={dot} color={b} size={S}/>
+      </DiceCard>
+    );
+  }
+}
+
 export class GambleGrowthDice extends DiceBase {
   static type     = 'gamblegrowth';
   static name     = '도박성장';

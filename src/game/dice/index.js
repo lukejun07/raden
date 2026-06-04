@@ -1,12 +1,12 @@
 import { FireDice, ElectricDice, PoisonDice, IceDice, SteelDice, BrokenDice, GambleDice, LockDice, WindDice } from './common.jsx';
-import { GambleGrowthDice, LightDice, CritDice } from './rare.jsx';
+import { SacrificeDice, GambleGrowthDice, LightDice, CritDice } from './rare.jsx';
 import { AdaptDice } from './heroic.jsx';
 import { JokerDice, GrowthDice, SunDice, ComboDice, MoonDice, SummonDice } from './legendary.jsx';
 
 export const DICE_CLASSES = [
   FireDice, ElectricDice, PoisonDice, IceDice, SteelDice, BrokenDice,
   GambleDice, LockDice, WindDice,
-  GambleGrowthDice, LightDice, CritDice,
+  SacrificeDice, GambleGrowthDice, LightDice, CritDice,
   AdaptDice,
   JokerDice, GrowthDice, SunDice, ComboDice, MoonDice, SummonDice,
 ];

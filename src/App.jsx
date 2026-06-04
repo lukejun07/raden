@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { CELL, COLS, ROWS, BW } from "./game/constants.js";
-import { DICE_KEYS } from "./game/dice/index.js";
-import { cellKey, rnd } from "./game/engine/utils.js";
+import { DICE_KEYS, DICE_REGISTRY } from "./game/dice/index.js";
+import { cellKey, rnd, getStat } from "./game/engine/utils.js";
 import { makePlayer, makeDice, addDiceAnim } from "./game/engine/player.js";
 import { spawnEnemy } from "./game/engine/enemy.js";
 import { posOnPath } from "./game/engine/paths.js";
@@ -206,6 +206,12 @@ export default function App() {
             (src.type==="combo" && tgtAdapt) ||
             (srcAdapt && tgt.type==="combo")) {
           p.comboCount = (p.comboCount || 0) + 1;
+        }
+        const sacCount = (src.type==="sacrifice" ? 1 : 0) + (tgt.type==="sacrifice" ? 1 : 0);
+        if (sacCount > 0) {
+          const sacClv = cl["sacrifice"] || (DICE_REGISTRY["sacrifice"]?.minClass||3);
+          const sacLv  = p.diceLevels["sacrifice"] || 1;
+          p.sp += getStat(DICE_REGISTRY["sacrifice"].stats.spReward, sacClv, sacLv) * sacCount;
         }
       }
       rerender();
