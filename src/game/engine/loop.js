@@ -71,6 +71,18 @@ export function tickPlayer(p, dt, onKill) {
       lightBuffMap[cellKey(nc,nr)] = Math.max(lightBuffMap[cellKey(nc,nr)]||0, lbPct);
     }
   }
+  const critBuffMap = {};
+  for (const [ck, cd] of Object.entries(p.dice)) {
+    if (!cd || cd.type !== "crit") continue;
+    const clvC = (p.classLevels?.["crit"]) || (DICE_REGISTRY["crit"].minClass||3);
+    const lvC  = p.diceLevels["crit"] || 1;
+    const cpct = getStat(DICE_REGISTRY["crit"].stats.critBonus, clvC, lvC);
+    const [cc, cr] = ck.split(",").map(Number);
+    for (const [nc, nr] of [[cc-1,cr],[cc+1,cr],[cc,cr-1],[cc,cr+1]]) {
+      if (nc<0||nc>=COLS||nr<0||nr>=ROWS) continue;
+      critBuffMap[cellKey(nc,nr)] = Math.max(critBuffMap[cellKey(nc,nr)]||0, cpct);
+    }
+  }
   const sunCount  = Object.values(p.dice).filter(d=>d?.type==="sun").length;
   const sunActivated  = sunCount  >= 3 && sunCount  % 2 === 1;
   const moonCount = Object.values(p.dice).filter(d=>d?.type==="moon").length;
@@ -101,7 +113,7 @@ export function tickPlayer(p, dt, onKill) {
     if (!d) continue;
     d.cd -= dt; if (d.cd > 0) continue;
     const def = DICE_REGISTRY[d.type];
-    if (def.ability.type === "lightAura" || def.ability.type === "moonAura") { d.cd = 1.0; continue; }
+    if (def.ability.type === "lightAura" || def.ability.type === "moonAura" || def.ability.type === "critAura") { d.cd = 1.0; continue; }
     const {x:cx, y:cy} = cellXY(...key.split(",").map(Number));
     const live = p.enemies.filter(e=>e.hp>0); if (!live.length) continue;
 
@@ -143,7 +155,7 @@ export function tickPlayer(p, dt, onKill) {
       else { tgt = liveSub.reduce((a,b) => a.dist < b.dist ? a : b); }
 
       const mb = moonBuffMap[key];
-      const projBase = {diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:1560,tx:tgt.x,ty:tgt.y,diceKey:key,sunCount,moonActivated,moonCritBonus:mb?.crit||0,moonDmgBonus:mb?.dmg||0,critMult:p.critMult||2};
+      const projBase = {diceType:d.type,dot:d.dot,classLv:clv,level:lv,color:projColor,speed:1560,tx:tgt.x,ty:tgt.y,diceKey:key,sunCount,moonActivated,moonCritBonus:mb?.crit||0,moonDmgBonus:mb?.dmg||0,critBonus:critBuffMap[key]||0,critMult:p.critMult||2};
 
       let gunX, gunY;
       if (dotPositions === "star") {

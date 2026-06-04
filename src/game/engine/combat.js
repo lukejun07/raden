@@ -7,7 +7,7 @@ export function applyHit(p, proj, tgt) {
 
   proj.critApplied = 1;
   if (!DC.skipCrit) {
-    const critChance = 0.05 + (proj.moonCritBonus||0) / 100;
+    const critChance = 0.05 + (proj.moonCritBonus||0) / 100 + (proj.critBonus||0) / 100;
     if (Math.random() < critChance) {
       proj.critApplied = proj.critMult || 2;
       dmg *= proj.critApplied;

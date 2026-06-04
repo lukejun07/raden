@@ -1,6 +1,7 @@
 import React from 'react';
 import { DiceBase } from './base.js';
 import { getStat } from '../engine/utils.js';
+import { DiceCard, DotLayer } from '../../components/dice/Primitives.jsx';
 import { DiceImgBase } from '../../components/dice/Primitives.jsx';
 import gamblegrowthImg from '../../assets/dice/gamblegrowth.webp';
 import lightImg from '../../assets/dice/light.webp';
@@ -30,6 +31,31 @@ export class GambleGrowthDice extends DiceBase {
     }
   }
   static render(p) { return <DiceImgBase {...p} img={gamblegrowthImg} dotColor={GambleGrowthDice.border}/>; }
+}
+
+export class CritDice extends DiceBase {
+  static type     = 'crit';
+  static name     = '크리티컬';
+  static rarity   = 'rare';
+  static border   = '#DD2255';
+  static bg       = '#FFAABB';
+  static target   = 'none';
+  static minClass = 3;
+  static description = '공격하지 않고 인접 4칸 주사위의 크리티컬 확률을 높입니다.';
+  static ability  = { type: 'critAura' };
+  static stats    = { atkInt: { base: 9999 }, critBonus: { base: 8, cP: 0.2, lP: 1 } };
+  static extraStatDefs = [{ label: '크리확률 증가(%)', key: 'critBonus' }];
+  static render({ size: S, dot }) {
+    const b = '#DD2255';
+    const cx = S * 0.5, cy = S * 0.5, arm = S * 0.22, sw = S * 0.11;
+    return (
+      <DiceCard size={S} border={b}>
+        <rect x={cx - sw/2} y={cy - arm} width={sw} height={arm*2} rx={sw*0.4} fill={b} opacity="0.55"/>
+        <rect x={cx - arm} y={cy - sw/2} width={arm*2} height={sw} rx={sw*0.4} fill={b} opacity="0.55"/>
+        <DotLayer dot={dot} color={b} size={S}/>
+      </DiceCard>
+    );
+  }
 }
 
 export class LightDice extends DiceBase {
