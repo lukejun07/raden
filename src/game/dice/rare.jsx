@@ -43,7 +43,7 @@ export class CritDice extends DiceBase {
   static minClass = 3;
   static description = '공격하지 않고 인접 4칸 주사위의 크리티컬 확률을 높입니다.';
   static ability  = { type: 'critAura' };
-  static stats    = { atkInt: { base: 9999 }, critBonus: { base: 8, cP: 0.2, lP: 1 } };
+  static stats    = { atkInt: { base: 9999 }, critBonus: { base: 7.6, cP: 0.2, lP: 1 } };
   static extraStatDefs = [{ label: '크리확률 증가(%)', key: 'critBonus' }];
   static render({ size: S, dot }) {
     const b = '#DD2255';
