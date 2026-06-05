@@ -211,7 +211,7 @@ export default function App() {
         if (sacCount > 0) {
           const sacClv = cl["sacrifice"] || (DICE_REGISTRY["sacrifice"]?.minClass||3);
           const sacLv  = p.diceLevels["sacrifice"] || 1;
-          p.sp += getStat(DICE_REGISTRY["sacrifice"].stats.spReward, sacClv, sacLv) * sacCount;
+          p.sp += getStat(DICE_REGISTRY["sacrifice"].stats.spReward, sacClv, sacLv) * src.dot * sacCount;
         }
       }
       rerender();

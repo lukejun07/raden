@@ -18,7 +18,7 @@ export class SacrificeDice extends DiceBase {
   static ability  = { type: 'none' };
   static stats    = { dmg: { base: 80, cP: 10, lP: 10 }, atkInt: { base: 1.0, cM: 0, lM: 0 }, spReward: { base: 80 } };
   static extraStatDefs = [{ label: 'SP 보상', key: 'spReward' }];
-  static onModifyDmg(proj, tgt, dmg) { return dmg + proj.dot * 10; }
+  static onModifyDmg(proj, tgt, dmg) { return dmg + (proj.dot - 1) * 10; }
   static render({ size: S, dot }) {
     const b = '#884400';
     const cx = S * 0.5, cy = S * 0.5;
